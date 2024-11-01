@@ -1,0 +1,29 @@
+<resources>
+    <string name="TECHNICAL">техник</string>
+    <string name="DESIGNER">дизайнер</string>
+    <string name="WRITER">текстовик</string>
+    <string name="COORDINATOR">координатор</string>
+    <string name="HEAD">глава</string>
+    <string name="GRADUATED">выпускник</string>
+    <string name="ADMIN">админ</string>
+    <string name="grad_year_range_warn">от 2024 до 2028</string>
+    <string name="invite_code">код приглашения</string>
+    <string name="username">юзернейм</string>
+    <string name="email">email</string>
+    <string name="year">год</string>
+    <string name="chooserole">выбрать роль</string>
+    <string name="SOUNDDESIGNER">саунд</string>
+    <string name="registration_title">регистрация</string>
+    <string name="first_name_label">имя</string>
+    <string name="last_name_label">фамилия</string>
+    <string name="building_label">здание</string>
+    <string name="password_label">пароль</string>
+    <string name="entercorrect">некорректно</string>
+    <string name="incorrectuname">юз может содержать латиницу, цифры, _ и - </string>
+    <string name="repeat_password_label">снова пароль</string>
+    <string name="submit_button_text">зарегистрироваться</string>
+    <string name="show_password_text">показать</string>
+    <string name="hide_password_text">скрыть</string>
+    <string name="password_mismatch_error">пароли должны совпадать</string>
+    <string name="network_error_prefix">ошибка сети: </string>
+</resources>
