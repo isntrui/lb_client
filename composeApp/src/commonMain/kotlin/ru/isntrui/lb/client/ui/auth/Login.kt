@@ -30,6 +30,10 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.launch
+import lbtool.composeapp.generated.resources.Res
+import lbtool.composeapp.generated.resources.incorrectuname
+import lbtool.composeapp.generated.resources.incorrpassform
+import org.jetbrains.compose.resources.stringResource
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.requests.LoginRequest
 import ru.isntrui.lb.client.responses.LoginResponse
@@ -50,7 +54,8 @@ data class User(
 
 
     fun isUsernameValid(): Boolean {
-        return username.matches(Regex("^[a-zA-Z0-9_]{3,16}\$"))
+        val usernameRegex = "^(?![_.-])[A-Za-z0-9_.-]{3,20}(?<![_.-])$".toRegex()
+        return usernameRegex.matches(username)
     }
 }
 
@@ -89,7 +94,7 @@ fun Login(navController: NavController) {
                 if (loginState.isShownUsernameError) {
                     if (loginState.username.length < 3) Text("Не менее 3 символов")
                     else if (loginState.username.length > 16) Text("Не более 16 символов")
-                    else Text("Только латинские буквы, цифры и _")
+                    else Text(stringResource(Res.string.incorrectuname))
                 }
             }
         )
@@ -107,10 +112,8 @@ fun Login(navController: NavController) {
             },
             isError = loginState.isShownPasswordError,
             supportingText = {
-                if (loginState.password.length > 21) {
-                    Text("Не более 21 символа")
-                } else if (loginState.isShownPasswordError) {
-                    Text("Не менее 8 символов, хотя бы одну букву, спецсимвол и одну цифру")
+                if (loginState.isShownPasswordError) {
+                    Text(stringResource(Res.string.incorrpassform))
                 }
             },
             visualTransformation = if (!loginState.isShownPassword) PasswordVisualTransformation() else VisualTransformation.None,

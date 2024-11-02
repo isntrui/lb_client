@@ -10,6 +10,8 @@
     <string name="invite_code">код приглашения</string>
     <string name="username">юзернейм</string>
     <string name="email">email</string>
+    <string name="unametaken">этот юз занят</string>
+    <string name="emailtaken">email уже зарегистрирован</string>
     <string name="year">год</string>
     <string name="chooserole">выбрать роль</string>
     <string name="SOUNDDESIGNER">саунд</string>
@@ -19,7 +21,8 @@
     <string name="building_label">здание</string>
     <string name="password_label">пароль</string>
     <string name="entercorrect">некорректно</string>
-    <string name="incorrectuname">юз может содержать латиницу, цифры, _ и - </string>
+    <string name="incorrpassform">≥8 и ≤21 символов, строчные и заглавные латинские буквы, спецсимвол и одну цифру</string>
+    <string name="incorrectuname">только латиница, цифры, _ и - </string>
     <string name="repeat_password_label">снова пароль</string>
     <string name="submit_button_text">зарегистрироваться</string>
     <string name="show_password_text">показать</string>

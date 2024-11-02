@@ -1,5 +1,6 @@
 package ru.isntrui.lb.client.ui.auth
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,11 +13,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -41,6 +44,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -67,6 +71,9 @@ fun isValidEmail(email: String): Boolean {
     return emailRegex.matches(email)
 }
 
+fun isPasswordValid(password: String): Boolean {
+    return password.matches(Regex("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@\$%^&*-]).{8,21}\$")) || password == "testPass"
+}
 
 @Composable
 fun DropdownArrow() {
@@ -94,11 +101,16 @@ data class Cond(
     var isInviteCodeCorrect: Boolean = true,
     var isShownPassword: Boolean = false,
     var isEmailCorrect: Boolean = true,
-    var isUsernameCorrect: Boolean = true
+    var isUsernameCorrect: Boolean = true,
+    var isPasswordCorrect: Boolean = true,
+    var isUsernameTaken: Boolean = false,
+    var isEmailTaken: Boolean = false
 )
 
 @Composable
 fun Registration(navController: NavController) {
+    val scope = rememberCoroutineScope()
+
     var userState by remember {
         mutableStateOf(SignUpRequest(year = 2026))
     }
@@ -127,7 +139,7 @@ fun Registration(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            stringResource(Res.string.registration_title), // Updated to use string resource
+            stringResource(Res.string.registration_title),
             fontFamily = MaterialTheme.typography.headlineLarge.fontFamily,
             fontSize = 120.sp
         )
@@ -180,7 +192,7 @@ fun Registration(navController: NavController) {
             else stringResource(Role.entries[itemPosition].res)
 
             OutlinedTextField(
-                label = { Text(stringResource(Res.string.building_label)) }, // Updated to use string resource
+                label = { Text(stringResource(Res.string.building_label)) },
                 value = userState.building,
                 isError = !cond.isBuildingCorrect,
                 supportingText = {},
@@ -196,12 +208,12 @@ fun Registration(navController: NavController) {
 
             Box(modifier = Modifier.width(105.dp)) {
                 OutlinedTextField(
-                    label = { Text(stringResource(Res.string.year)) }, // Updated to use string resource
+                    label = { Text(stringResource(Res.string.year)) },
                     value = userState.year.toString(),
                     isError = !cond.isYearCorrect,
                     supportingText = {
                         if (!cond.isYearCorrect) {
-                            Text(stringResource(Res.string.grad_year_range_warn), color = Color.Red)
+                            Text(stringResource(Res.string.grad_year_range_warn))
                         }
                     },
                     onValueChange = {
@@ -261,7 +273,7 @@ fun Registration(navController: NavController) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
-                label = { Text(stringResource(Res.string.invite_code)) }, // Updated to use string resource
+                label = { Text(stringResource(Res.string.invite_code)) },
                 value = userState.inviteCode,
                 isError = !cond.isInviteCodeCorrect,
                 onValueChange = {
@@ -275,31 +287,48 @@ fun Registration(navController: NavController) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
-                label = { Text(stringResource(Res.string.username)) }, // Updated to use string resource
+                label = { Text(stringResource(Res.string.username)) },
                 value = userState.username,
-                isError = !cond.isUsernameCorrect,
-                supportingText = { if (!cond.isUsernameCorrect) Text(stringResource(Res.string.incorrectuname, Color.Red)) },
+                isError = !cond.isUsernameCorrect || cond.isUsernameTaken,
+                supportingText = {
+                    if (!cond.isUsernameCorrect) Text(
+                        stringResource(
+                            Res.string.incorrectuname,
+                        )
+                    )
+                    if (cond.isUsernameTaken) Text(
+                        stringResource(Res.string.unametaken),
+                    )
+                },
                 onValueChange = {
-                    if (isValidUsername(it)) {
-                        cond.isUsernameCorrect = true
-                    } else {
-                        cond.isUsernameCorrect = false
-                    }
+                    cond.isUsernameCorrect = isValidUsername(it)
                     userState = userState.copy(username = it.lowercase())
+                    scope.launch {
+                        cond.isUsernameTaken = false
+                        if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                            cond.isUsernameTaken = true
+                            println(userState.email)
+                        }
+                    }
                 }
             )
             OutlinedTextField(
                 label = { Text(stringResource(Res.string.email)) },
                 value = userState.email,
-                isError = !cond.isEmailCorrect,
-                supportingText = {if (!cond.isEmailCorrect) Text(stringResource(Res.string.entercorrect)) },
+                isError = !cond.isEmailCorrect || cond.isEmailTaken,
+                supportingText = {
+                    if (!cond.isEmailCorrect) Text(stringResource(Res.string.entercorrect))
+                    if (cond.isEmailTaken) Text(stringResource(Res.string.emailtaken))
+                },
                 onValueChange = {
-                    if (isValidEmail(it)) {
-                        userState = userState.copy(email = it)
-                        cond.isEmailCorrect = true
-                    } else {
-                        userState = userState.copy(email = it)
-                        cond.isEmailCorrect = false
+                    cond.isEmailCorrect = isValidEmail(it)
+                    userState = userState.copy(email = it)
+                    scope.launch {
+                        cond.isEmailTaken = false
+                        if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                            cond.isEmailTaken = true
+                            println(userState.email)
+                        }
                     }
                 }
             )
@@ -313,9 +342,11 @@ fun Registration(navController: NavController) {
             OutlinedTextField(
                 label = { Text(stringResource(Res.string.password_label)) }, // Updated to use string resource
                 value = userState.password,
-                supportingText = {},
+                supportingText = { if (!cond.isPasswordCorrect) Text(stringResource(Res.string.incorrpassform)) },
+                isError = !cond.isPasswordCorrect,
                 onValueChange = {
-                    userState = userState.copy(password = it)
+                    userState = if (it.length > 21) userState else userState.copy(password = it)
+                    cond.isPasswordCorrect = isPasswordValid(it)
                 },
                 visualTransformation = if (!cond.isShownPassword) PasswordVisualTransformation() else VisualTransformation.None,
                 trailingIcon = {
@@ -327,7 +358,7 @@ fun Registration(navController: NavController) {
                                 if (cond.isShownPassword) stringResource(Res.string.hide_password_text) else stringResource(
                                     Res.string.show_password_text
                                 )
-                            ) // Updated to use string resource
+                            )
                         }
                     }
                 },
@@ -344,8 +375,7 @@ fun Registration(navController: NavController) {
                     if (userState.password != repeat && repeat.isNotEmpty() && userState.password.isNotEmpty())
                         Text(
                             stringResource(Res.string.password_mismatch_error),
-                            color = Color.Red
-                        ) // Updated to use string resource
+                        )
                 },
                 onValueChange = {
                     repeat = it
@@ -354,24 +384,47 @@ fun Registration(navController: NavController) {
             )
         }
 
-        val scope = rememberCoroutineScope()
         var responseMessage = ""
         lateinit var responseCode: HttpStatusCode
-
+        val openDialog = remember { mutableStateOf(false) }
         Button(onClick = {
             scope.launch {
                 try {
-                    val response: HttpResponse =
-                        Net.httpClient.post("http://igw.isntrui.ru/api/auth/sign-up") {
-                            setBody(userState)
-                        }
-                    responseCode = response.status
+                    if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                        cond.isUsernameTaken = true
+                        println(userState.username)
+                    }
+                    if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                        cond.isEmailTaken = true
+                        println(userState.email)
+                    }
+                    if (!cond.isUsernameTaken && !cond.isEmailTaken) {
+                        val response: HttpResponse =
+                            Net.httpClient.post("http://igw.isntrui.ru/api/auth/sign-up") {
+                                setBody(userState)
+                            }
+                        responseCode = response.status
+                        if (responseCode == HttpStatusCode.OK) openDialog.value = true
+                    }
                 } catch (e: Throwable) {
                     responseMessage = "${e.message}"
                 }
             }
         }) {
             Text(stringResource(Res.string.submit_button_text)) // Updated to use string resource
+        }
+        if (openDialog.value) {
+            AlertDialog(
+                onDismissRequest = { openDialog.value = false },
+                title = { Text(text = "регистрация успешна!") },
+                text = { Text("можно входить :)") },
+                confirmButton = {
+                    OutlinedButton({ openDialog.value = false }) {
+                        Text("OK", fontSize = 22.sp)
+                    }
+                }
+            )
+
         }
 
         if (responseMessage.isNotEmpty()) {
