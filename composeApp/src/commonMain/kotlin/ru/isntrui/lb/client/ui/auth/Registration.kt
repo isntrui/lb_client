@@ -1,6 +1,5 @@
 package ru.isntrui.lb.client.ui.auth
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,10 +47,12 @@ import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.launch
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.models.enums.Role
@@ -110,7 +111,7 @@ data class Cond(
 @Composable
 fun Registration(navController: NavController) {
     val scope = rememberCoroutineScope()
-
+    var inviteErrRes: StringResource? = null
     var userState by remember {
         mutableStateOf(SignUpRequest(year = 2026))
     }
@@ -124,6 +125,7 @@ fun Registration(navController: NavController) {
         mutableStateOf(Cond())
     }
     val focusRequester = remember { FocusRequester() }
+    var repeatPass by remember { mutableStateOf("") }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
@@ -305,7 +307,7 @@ fun Registration(navController: NavController) {
                     userState = userState.copy(username = it.lowercase())
                     scope.launch {
                         cond.isUsernameTaken = false
-                        if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                        if (Net.client().get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
                             cond.isUsernameTaken = true
                             println(userState.email)
                         }
@@ -323,11 +325,13 @@ fun Registration(navController: NavController) {
                 onValueChange = {
                     cond.isEmailCorrect = isValidEmail(it)
                     userState = userState.copy(email = it)
-                    scope.launch {
-                        cond.isEmailTaken = false
-                        if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
-                            cond.isEmailTaken = true
-                            println(userState.email)
+                    if (cond.isEmailCorrect) {
+                        scope.launch {
+                            cond.isEmailTaken = false
+                            if (Net.client().get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                                cond.isEmailTaken = true
+                                println(userState.email)
+                            }
                         }
                     }
                 }
@@ -340,7 +344,7 @@ fun Registration(navController: NavController) {
         ) {
 
             OutlinedTextField(
-                label = { Text(stringResource(Res.string.password_label)) }, // Updated to use string resource
+                label = { Text(stringResource(Res.string.password_label)) },
                 value = userState.password,
                 supportingText = { if (!cond.isPasswordCorrect) Text(stringResource(Res.string.incorrpassform)) },
                 isError = !cond.isPasswordCorrect,
@@ -365,76 +369,90 @@ fun Registration(navController: NavController) {
                 singleLine = true
             )
 
-            var repeat by remember { mutableStateOf("") }
 
             OutlinedTextField(
                 label = { Text(stringResource(Res.string.repeat_password_label)) }, // Updated to use string resource
-                value = repeat,
-                isError = userState.password != repeat && repeat.isNotEmpty() && userState.password.isNotEmpty(),
+                value = repeatPass,
+                isError = userState.password != repeatPass && repeatPass.isNotEmpty() && userState.password.isNotEmpty(),
                 supportingText = {
-                    if (userState.password != repeat && repeat.isNotEmpty() && userState.password.isNotEmpty())
+                    if (userState.password != repeatPass && repeatPass.isNotEmpty() && userState.password.isNotEmpty())
                         Text(
                             stringResource(Res.string.password_mismatch_error),
                         )
                 },
                 onValueChange = {
-                    repeat = it
+                    repeatPass = it
                 },
                 visualTransformation = if (!cond.isShownPassword) PasswordVisualTransformation() else VisualTransformation.None,
             )
         }
 
-        var responseMessage = ""
         lateinit var responseCode: HttpStatusCode
         val openDialog = remember { mutableStateOf(false) }
-        Button(onClick = {
-            scope.launch {
-                try {
-                    if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
-                        cond.isUsernameTaken = true
-                        println(userState.username)
-                    }
-                    if (Net.httpClient.get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
-                        cond.isEmailTaken = true
-                        println(userState.email)
-                    }
-                    if (!cond.isUsernameTaken && !cond.isEmailTaken) {
-                        val response: HttpResponse =
-                            Net.httpClient.post("http://igw.isntrui.ru/api/auth/sign-up") {
-                                setBody(userState)
+        Button(
+            onClick = {
+                scope.launch {
+                    try {
+                        if (Net.client().get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                            cond.isUsernameTaken = true
+                            println(userState.username)
+                        }
+                        if (Net.client().get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                            cond.isEmailTaken = true
+                            println(userState.email)
+                        }
+                        if (!cond.isUsernameTaken && !cond.isEmailTaken) {
+                            val response: HttpResponse =
+                                Net.client().post("http://igw.isntrui.ru/api/auth/sign-up") {
+                                    setBody(userState)
+                                }
+                            responseCode = response.status
+                            if (responseCode == HttpStatusCode.NotFound) {
+                                inviteErrRes = Res.string.invitenotfound
+                            } else if (responseCode == HttpStatusCode.Unauthorized) {
+                                inviteErrRes = Res.string.emaildoesntmatchinvite
                             }
-                        responseCode = response.status
-                        if (responseCode == HttpStatusCode.OK) openDialog.value = true
+                            println(response.bodyAsText())
+                            println(response.status)
+                            if (responseCode == HttpStatusCode.OK) openDialog.value = true
+                        }
+                    } catch (e: Throwable) {
+                        e.printStackTrace()
                     }
-                } catch (e: Throwable) {
-                    responseMessage = "${e.message}"
                 }
-            }
-        }) {
-            Text(stringResource(Res.string.submit_button_text)) // Updated to use string resource
+            }, enabled =
+            userState.password == repeatPass &&
+                    !cond.isEmailTaken &&
+                    !cond.isUsernameTaken &&
+                    isValidUsername(userState.username) &&
+                    isValidName(userState.firstName) &&
+                    isValidName(userState.lastName) &&
+                    isValidName(userState.building) &&
+                    isPasswordValid(userState.password) &&
+                    isValidEmail(userState.email) &&
+                    userState.role != null
+        ) {
+            Text(stringResource(Res.string.submit_button_text))
         }
         if (openDialog.value) {
             AlertDialog(
                 onDismissRequest = { openDialog.value = false },
-                title = { Text(text = "регистрация успешна!") },
-                text = { Text("можно входить :)") },
+                title = { Text(text = stringResource(Res.string.successregtitle)) },
+                text = { Text(stringResource(Res.string.successregbody)) },
                 confirmButton = {
-                    OutlinedButton({ openDialog.value = false }) {
+                    OutlinedButton(
+                        {
+                            openDialog.value = false
+                            navController.navigate("login")
+                        }
+                    ) {
                         Text("OK", fontSize = 22.sp)
                     }
                 }
             )
-
         }
-
-        if (responseMessage.isNotEmpty()) {
-            Text(
-                responseMessage,
-                color = if (responseCode == HttpStatusCode.OK) Color.Green else Color.Red,
-                style = MaterialTheme.typography.headlineMedium
-            )
-        } else {
-            Text(responseMessage, style = MaterialTheme.typography.headlineLarge, fontSize = 10.sp)
+        if (inviteErrRes != null) {
+            Text(stringResource(inviteErrRes!!), color = Color.Red, style = MaterialTheme.typography.headlineMedium)
         }
     }
 }

@@ -53,7 +53,14 @@ kotlin {
             implementation("io.ktor:ktor-client-core:3.0.1")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
             implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
+            implementation("io.ktor:ktor-client-json:3.0.1")
+            implementation("io.ktor:ktor-client-serialization:3.0.1")
+            implementation("io.ktor:ktor-client-auth:3.0.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+            implementation("com.russhwolf:multiplatform-settings-no-arg:1.2.0")
+            implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc02")
+            implementation("io.coil-kt.coil3:coil-network-ktor3:3.0.0-rc02")
         }
 
 
@@ -61,11 +68,11 @@ kotlin {
             implementation("io.ktor:ktor-client-cio:3.0.1")
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
+            implementation("org.bouncycastle:bcprov-jdk15on:1.70")
         }
 
-
         wasmJsMain.dependencies {
-
+            implementation("org.jetbrains.kotlinx:kotlinx-browser:0.2")
         }
     }
 }

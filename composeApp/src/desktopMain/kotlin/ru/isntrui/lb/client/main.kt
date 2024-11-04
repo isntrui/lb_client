@@ -9,7 +9,7 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         title = "LB Tool",
-        state = WindowState(width = 800.dp, height = 700.dp)
+        state = WindowState(width = 1000.dp, height = 900.dp)
     ) {
         App()
     }

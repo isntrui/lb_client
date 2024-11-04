@@ -4,5 +4,5 @@ plugins {
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
-    kotlin("plugin.serialization") version "1.8.10" apply false
+    kotlin("plugin.serialization") version "1.8.10"
 }

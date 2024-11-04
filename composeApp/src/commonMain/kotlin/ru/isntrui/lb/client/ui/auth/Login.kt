@@ -5,12 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,17 +29,29 @@ import androidx.navigation.NavController
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import lbtool.composeapp.generated.resources.Res
+import lbtool.composeapp.generated.resources.hide_password_text
 import lbtool.composeapp.generated.resources.incorrectuname
 import lbtool.composeapp.generated.resources.incorrpassform
+import lbtool.composeapp.generated.resources.login
+import lbtool.composeapp.generated.resources.password_label
+import lbtool.composeapp.generated.resources.registration_title
+import lbtool.composeapp.generated.resources.show_password_text
+import lbtool.composeapp.generated.resources.username
 import org.jetbrains.compose.resources.stringResource
+import retrieveToken
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.requests.LoginRequest
 import ru.isntrui.lb.client.responses.LoginResponse
+import ru.isntrui.lb.client.storage.TokenStorage
 
-data class User(
+data class Creds(
     val username: String,
     val password: String,
     val isShownPassword: Boolean = false,
@@ -62,12 +75,16 @@ data class User(
 @Composable
 fun Login(navController: NavController) {
 
-    var loginState by remember { mutableStateOf(User("", "")) }
+    var loginState by remember { mutableStateOf(Creds("", "")) }
     var responseMessage by remember { mutableStateOf("") } // State for response message
     var responseCode by remember { mutableStateOf<HttpStatusCode?>(null) }
+    val existingToken = retrieveToken()
+    if (existingToken != null) {
+        navController.navigate("dashboard")
+    }
+
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp, alignment = Alignment.CenterVertically),
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -78,8 +95,8 @@ fun Login(navController: NavController) {
         )
         Spacer(Modifier.height(30.dp))
 
-        TextField(
-            label = { Text("юзернейм") },
+        OutlinedTextField(
+            label = { Text(stringResource(Res.string.username)) },
             value = loginState.username,
             onValueChange = {
                 loginState = loginState.copy(username = it.lowercase())
@@ -99,8 +116,8 @@ fun Login(navController: NavController) {
             }
         )
 
-        TextField(
-            label = { Text("пароль") },
+        OutlinedTextField(
+            label = { Text(stringResource(Res.string.password_label)) },
             value = loginState.password,
             onValueChange = {
                 loginState = loginState.copy(password = it)
@@ -122,7 +139,7 @@ fun Login(navController: NavController) {
                     TextButton(onClick = {
                         loginState = loginState.copy(isShownPassword = !loginState.isShownPassword)
                     }) {
-                        Text(if (loginState.isShownPassword) "Скрыть" else "Показать")
+                        Text(if (loginState.isShownPassword) stringResource(Res.string.show_password_text) else stringResource(Res.string.hide_password_text))
                     }
                 }
             },
@@ -144,8 +161,9 @@ fun Login(navController: NavController) {
             scope.launch {
                 try {
                     val response: HttpResponse =
-                        Net.httpClient.post("http://igw.isntrui.ru/api/auth/sign-in") {
+                        Net.client().post("http://igw.isntrui.ru/api/auth/sign-in") {
                             setBody(LoginRequest(loginState.username.lowercase(), loginState.password))
+                            contentType(ContentType.Application.Json)
                         }
                     responseMessage = when (response.status) {
                         HttpStatusCode.OK -> "Вы вошли"
@@ -153,23 +171,44 @@ fun Login(navController: NavController) {
                         HttpStatusCode.InternalServerError -> "Технические проблемы. Сообщите, пожалуйста, своему координатору"
                         else -> "Неизвестная ошибка"
                     }
+                    if (response.status == HttpStatusCode.OK) {
+                        val respTok = Json.decodeFromString<LoginResponse>(response.bodyAsText())
+                        TokenStorage.saveToken(respTok.token)
+                        Net.recreate()
+                        navController.navigate("dashboard")
+                    }
+
                     responseCode = response.status
                 } catch (e: Throwable) {
                     responseMessage = "Ошибка сети: ${e.message}"
                 }
             }
         }, enabled = loginState.isUsernameValid() && loginState.isPasswordValid()) {
-            Text("Войти")
+            Text(stringResource(Res.string.login))
         }
 
         OutlinedButton(onClick = {
-            navController.navigate("main")
+            navController.navigate("registration")
         }) {
-            Text("Регистрация")
+            Text(stringResource(Res.string.registration_title))
+        }
+        val openDialog = remember { mutableStateOf(false) }
+
+        TextButton(onClick = {openDialog.value = true}) {
+            Text("забыл/-а пароль?")
         }
 
-        TextButton(onClick = {}) {
-            Text("Забыл/-а пароль?")
+        if (openDialog.value) {
+            AlertDialog(
+                onDismissRequest = { openDialog.value = false},
+                title = { Text(text = "забыл/-а пароль? :c", style = MaterialTheme.typography.headlineMedium) },
+                text = { Text("напиши своему координатору по этому вопросу – он тебе поможет!", fontSize = 18.sp, style = MaterialTheme.typography.headlineSmall) },
+                confirmButton = {
+                    Button({ openDialog.value = false }) {
+                        Text("OK", fontSize = 22.sp)
+                    }
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(30.dp))
