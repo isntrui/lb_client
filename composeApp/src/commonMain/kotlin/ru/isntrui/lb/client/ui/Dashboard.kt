@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import lbtool.composeapp.generated.resources.Res
@@ -27,15 +27,9 @@ import lbtool.composeapp.generated.resources.chooserole
 import lbtool.composeapp.generated.resources.defaultAvatar
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import ru.isntrui.lb.client.api.fetchTasks
 import ru.isntrui.lb.client.Net
-import ru.isntrui.lb.client.api.createTask
-import ru.isntrui.lb.client.api.fetchAllActualWaves
-import ru.isntrui.lb.client.api.fetchAllUsersByRole
-import ru.isntrui.lb.client.api.fetchCurrentUser
-import ru.isntrui.lb.client.api.fetchCurrentWave
-import ru.isntrui.lb.client.models.User
-import ru.isntrui.lb.client.models.Wave
+import ru.isntrui.lb.client.api.*
+import ru.isntrui.lb.client.models.*
 import ru.isntrui.lb.client.models.enums.Role
 import ru.isntrui.lb.client.models.task.Task
 import ru.isntrui.lb.client.models.task.UserTask
@@ -46,6 +40,7 @@ import ru.isntrui.lb.client.ui.views.NoServerConnectionAlertDialog
 import ru.isntrui.lb.client.utils.formatDate
 import ru.isntrui.lb.client.utils.isDatePassed
 
+var isAgain = false
 
 @Composable
 fun Dashboard(navController: NavController) {
@@ -60,17 +55,8 @@ fun Dashboard(navController: NavController) {
     LaunchedEffect(Unit) {
         try {
             user = fetchCurrentUser(Net.client())
-        } catch (e: Exception) {
-            exception = e
-            showErrorDialog = true
-        }
-        loading = true
-        try {
             tasks = loadTasks()
             currentWave = fetchCurrentWave(Net.client())
-        } catch (e: HttpRequestTimeoutException) {
-            exception = e
-            showErrorDialog = true
         } catch (e: Exception) {
             exception = e
             showErrorDialog = true
@@ -80,116 +66,99 @@ fun Dashboard(navController: NavController) {
     }
 
     if (loading) {
-        Column(
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (user.firstName != "") {
-                        Text(
-                            "Привет, ${user.firstName}!",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontSize = 72.sp
-                        )
-                        Spacer(modifier = Modifier.height(40.dp))
-                    }
-                    LinearProgressIndicator()
-                }
-            }
-        }
+        LoadingScreen(user)
     } else {
+        isAgain = true
         Scaffold(
-            floatingActionButton = {
-                if (user.role == Role.COORDINATOR || user.role == Role.HEAD || user.role == Role.ADMIN)
-                    CenteredExtendedFloatingActionButton(
-                        onClick = { openDialog = true },
-                        icon = { Icon(Icons.Filled.Add, "плюс") },
-                        text = "создать таску",
-                    )
-            },
-            floatingActionButtonPosition = FabPosition.End,
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.Start
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "твои таски",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontSize = 48.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    Spacer(Modifier.weight(1f))
-
-                    Card {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Column(verticalArrangement = Arrangement.aligned(Alignment.CenterVertically)) {
-                                if (user.avatarUrl != null) {
-                                    AsyncImage(
-                                        model = user.avatarUrl,
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .clip(CircleShape)
-                                            .border(2.dp, Color.Gray, CircleShape)
-                                    )
-                                } else {
-                                    Image(
-                                        painter = painterResource(Res.drawable.defaultAvatar),
-                                        contentDescription = null,
-                                        Modifier
-                                            .size(56.dp)
-                                            .clip(CircleShape)
-                                            .border(2.dp, Color.Gray, CircleShape)
+            content = {
+                Row {
+                    NavigationRail {
+                        if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN)) {
+                            CenteredExtendedFloatingActionButton(
+                                onClick = { openDialog = true },
+                                icon = { Icon(Icons.Filled.Add, "плюс") }
+                            )
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(onClick = { navController.navigate("settings") }) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    VerticalDivider()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Top,
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "твои таски",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontSize = 48.sp,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                            Spacer(Modifier.weight(1f))
+                            UserCard(user)
+                        }
+                        Spacer(Modifier.fillMaxWidth().height(10.dp))
+                        HorizontalDivider()
+                        if (tasks.isNotEmpty()) {
+                            LazyColumn {
+                                items(tasks) { task ->
+                                    TaskCard(task)
+                                }
+                                items(1) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        HorizontalDivider()
+                                        Spacer(modifier = Modifier.height(28.dp))
+                                        Text(
+                                            text = "текущая волна #${currentWave.id}",
+                                            style = MaterialTheme.typography.headlineLarge,
+                                            color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+                                }
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Spacer(Modifier.weight(0.5f))
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "у тебя нет активных задач :)",
+                                        style = MaterialTheme.typography.headlineLarge,
+                                        fontSize = 48.sp,
+                                        color = Color.Gray
                                     )
                                 }
-
-                            }
-                            Column(verticalArrangement = Arrangement.aligned(Alignment.CenterVertically)) {
+                                Spacer(Modifier.weight(0.5f))
+                                HorizontalDivider(color = Color.LightGray)
                                 Text(
-                                    user.firstName + " " + user.lastName,
-                                    style = MaterialTheme.typography.headlineMedium
-                                )
-                                Text(
-                                    stringResource(user.role.res)
+                                    text = "текущая волна #${currentWave.id}",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    color = Color.LightGray,
+                                    modifier = Modifier.padding(8.dp)
                                 )
                             }
                         }
-                    }
-                }
-                if (tasks.isNotEmpty())
-                    LazyColumn {
-                        items(tasks) { task ->
-                            TaskCard(task)
-                        }
-                    } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "у тебя нет активных задач :)",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontSize = 48.sp,
-                            color = Color.Gray
-                        )
                     }
                 }
             }
-        }
+        )
     }
     if (openDialog) {
         CreateTaskDialog(
@@ -205,36 +174,131 @@ fun Dashboard(navController: NavController) {
 }
 
 @Composable
+fun LoadingScreen(user: User) {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (isAgain) {
+                    Text(
+                        "Секундочку, пожалуйста!",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontSize = 72.sp
+                    )
+                    Spacer(modifier = Modifier.height(40.dp))
+                } else if (user.firstName.isNotEmpty()) {
+                    Text(
+                        "Привет, ${user.firstName}!",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontSize = 72.sp
+                    )
+                    Spacer(modifier = Modifier.height(40.dp))
+                }
+                LinearProgressIndicator()
+            }
+        }
+    }
+}
+
+@Composable
+fun UserCard(user: User) {
+    Card {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.Center) {
+                if (user.avatarUrl != null) {
+                    AsyncImage(
+                        model = user.avatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, Color.Gray, CircleShape)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(Res.drawable.defaultAvatar),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, Color.Gray, CircleShape)
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.Center) {
+                Text(
+                    "${user.firstName} ${user.lastName}",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Text(stringResource(user.role.res))
+            }
+        }
+    }
+}
+
+@Composable
 fun TaskCard(task: Task) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp, horizontal = 12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.padding(16.dp).weight(1f)) {
-                Text(text = task.title, style = MaterialTheme.typography.titleMedium)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = task.description, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = task.description,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Status: ${task.taskStatus}",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.secondary
+                    )
                 )
             }
-            val deadColor = if (isDatePassed(task.deadline)) Color.Red else Color.Unspecified
-            OutlinedCard(Modifier.padding(16.dp)) {
+            val deadColor = if (isDatePassed(task.deadline)) Color.Red else MaterialTheme.colorScheme.primary
+            OutlinedCard(Modifier.padding(10.dp)) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 6.dp)
                 ) {
                     Icon(
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(28.dp),
                         imageVector = Icons.Default.DateRange,
                         contentDescription = null,
                         tint = deadColor
                     )
                     Text(
                         text = formatDate(task.deadline.dayOfMonth, task.deadline.monthNumber),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
@@ -245,39 +309,21 @@ fun TaskCard(task: Task) {
 @Composable
 fun CenteredExtendedFloatingActionButton(
     onClick: () -> Unit,
-    icon: @Composable () -> Unit,
-    text: String
+    icon: @Composable () -> Unit
 ) {
-    ExtendedFloatingActionButton(
+    FloatingActionButton(
         onClick = onClick,
         modifier = Modifier.padding(16.dp),
     ) {
-        Box(
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                icon()
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = text, fontSize = 16.sp)
-            }
+        Box(contentAlignment = Alignment.Center) {
+            icon()
         }
     }
 }
 
 @Composable
 fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDismiss: () -> Unit) {
-    var taskState by remember {
-        mutableStateOf(
-            TaskRequest(
-                createdBy = user,
-                wave = wave,
-                takenBy = null
-            )
-        )
-    }
+    var taskState by remember { mutableStateOf(TaskRequest(createdBy = user, wave = wave, takenBy = null)) }
     val scope = rememberCoroutineScope()
     var isRoleDropDownExpanded by remember { mutableStateOf(false) }
     var isUserDropDownExpanded by remember { mutableStateOf(false) }
@@ -292,8 +338,7 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
     var titleError by remember { mutableStateOf(false) }
     var descriptionError by remember { mutableStateOf(false) }
 
-    val roleText: String = if (itemPosition == -1) stringResource(Res.string.chooserole)
-    else stringResource(Role.entries[itemPosition].res)
+    val roleText: String = if (itemPosition == -1) stringResource(Res.string.chooserole) else stringResource(Role.entries[itemPosition].res)
 
     LaunchedEffect(Unit) {
         actualWaves = fetchAllActualWaves(Net.client())
@@ -304,17 +349,9 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
         }
     }
 
-    fun validateTitle(title: String): Boolean {
-        return title.isNotBlank()
-    }
-
-    fun validateDescription(description: String): Boolean {
-        return description.isNotBlank()
-    }
-
-    fun validateDeadline(deadline: LocalDate): Boolean {
-        return !isDatePassed(deadline)
-    }
+    fun validateTitle(title: String) = title.isNotBlank()
+    fun validateDescription(description: String) = description.isNotBlank()
+    fun validateDeadline(deadline: LocalDate) = !isDatePassed(deadline)
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -389,10 +426,7 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                         onClick = { isRoleDropDownExpanded = !isRoleDropDownExpanded }
                     ) {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(
-                                8.dp,
-                                alignment = Alignment.CenterVertically
-                            ),
+                            verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row {
@@ -444,17 +478,13 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                             onClick = { isUserDropDownExpanded = !isUserDropDownExpanded }
                         ) {
                             Column(
-                                verticalArrangement = Arrangement.spacedBy(
-                                    8.dp,
-                                    alignment = Alignment.CenterVertically
-                                ),
+                                verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Row {
                                     Spacer(Modifier.width(20.dp).height(5.dp))
                                     Text(
-                                        selectedUser?.let { it.firstName + " " + it.lastName }
-                                            ?: "выберать пользователя",
+                                        selectedUser?.let { it.firstName + " " + it.lastName } ?: "выберать пользователя",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontSize = 16.sp
                                     )
@@ -462,7 +492,6 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                                     DropdownArrow()
                                     Spacer(Modifier.width(7.dp))
                                 }
-                                println(users)
                                 DropdownMenu(
                                     expanded = isUserDropDownExpanded,
                                     onDismissRequest = { isUserDropDownExpanded = false }
@@ -471,8 +500,7 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                                         DropdownMenuItem(
                                             text = {
                                                 Box(
-                                                    modifier = Modifier.fillMaxWidth()
-                                                        .padding(16.dp),
+                                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                                                     contentAlignment = Alignment.CenterStart
                                                 ) {
                                                     Text(
@@ -508,17 +536,13 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                         onClick = { isWaveDropDownExpanded = !isWaveDropDownExpanded }
                     ) {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(
-                                8.dp,
-                                alignment = Alignment.CenterVertically
-                            ),
+                            verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row {
                                 Spacer(Modifier.width(20.dp).height(5.dp))
                                 Text(
-                                    selectedWave?.let { "#" + it.id + " " + it.title }
-                                        ?: "выбрать волну",
+                                    selectedWave?.let { "#" + it.id + " " + it.title } ?: "выбрать волну",
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontSize = 16.sp
                                 )
@@ -562,7 +586,6 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                     scope.launch {
                         try {
                             createTask(Net.client(), taskState)
-                            println("Task created")
                         } catch (e: Exception) {
                             println("Error: ${e.message}")
                         } finally {
