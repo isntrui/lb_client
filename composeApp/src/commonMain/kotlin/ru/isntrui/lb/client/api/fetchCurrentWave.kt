@@ -1,32 +1,35 @@
 package ru.isntrui.lb.client.api
 
-import io.ktor.client.*
-import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import ru.isntrui.lb.client.models.Wave
 import ru.isntrui.lb.client.models.task.Task
 
 private val json = Json {
     ignoreUnknownKeys = true
 }
 
-suspend fun fetchTasks(client: HttpClient): List<Task> {
+suspend fun fetchCurrentWave(client: HttpClient): Wave {
     return try {
-        val response: HttpResponse = client.get("task/my")
+        val response: HttpResponse = client.get("wave/current")
 
         if (response.status.value == 200) {
             val responseBody = response.bodyAsText()
-            json.decodeFromString<List<Task>>(responseBody)
+            println(responseBody)
+            json.decodeFromString<Wave>(responseBody)
         } else {
             println("Error fetching tasks: ${response.status}")
-            emptyList()
+            Wave()
         }
     } catch (e: SerializationException) {
-        throw RuntimeException("Serialization error: ${e.message}")
+        println("Serialization error: ${e.message}")
+        Wave()
     } catch (e: Exception) {
-        throw RuntimeException("Error fetching tasks: ${e.message}")
+        println("Error fetching tasks: ${e.message}")
+        Wave()
     }
 }

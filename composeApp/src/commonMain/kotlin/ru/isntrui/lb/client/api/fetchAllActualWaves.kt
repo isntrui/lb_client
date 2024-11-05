@@ -5,14 +5,14 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.json.Json
-import ru.isntrui.lb.client.models.User
+import ru.isntrui.lb.client.models.Wave
 
 private val json = Json {
     ignoreUnknownKeys = true
 }
 
-suspend fun fetchCurrentUser(client: HttpClient): User {
-    val response: HttpResponse = client.get("user/")
+suspend fun fetchAllActualWaves(client: HttpClient): List<Wave> {
+    val response: HttpResponse = client.get("wave/allActual")
     val responseBody = response.bodyAsText()
-    return json.decodeFromString<User>(responseBody)
+    return json.decodeFromString<List<Wave>>(responseBody)
 }

@@ -8,7 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.isntrui.lb.client.ui.auth.Login
 import ru.isntrui.lb.client.ui.auth.Registration
-import ru.isntrui.lb.client.ui.dashboard.Dashboard
+import ru.isntrui.lb.client.ui.Dashboard
 
 @Composable
 @Preview

@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.client.plugins.defaultRequest
 import ru.isntrui.lb.client.storage.TokenStorage
 
 sealed class Net {
@@ -20,6 +21,9 @@ sealed class Net {
                         }
                     }
                 }
+            }
+            defaultRequest {
+                url("http://igw.isntrui.ru/api/")
             }
             install(ContentNegotiation) {
                 json(Json {
@@ -41,6 +45,9 @@ sealed class Net {
                             }
                         }
                     }
+                }
+                defaultRequest {
+                    url("http://igw.isntrui.ru/api/")
                 }
                 install(ContentNegotiation) {
                     json(Json {

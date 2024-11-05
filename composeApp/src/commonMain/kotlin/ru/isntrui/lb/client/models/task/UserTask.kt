@@ -7,13 +7,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UserTask (
-	val id : Int,
-	val role : Role,
-	val firstName : String,
-	val lastName : String,
-	val graduateYear : Int,
-	val building : String,
-	val registeredOn : String,
-	val username : String,
-	val avatarUrl : String?,
+	val id : Long,
+	val role : Role? = null,
+	val firstName : String? = null,
+	val lastName : String? = null,
+	val graduateYear : Int? = null,
+	val building : String? = null,
+	val registeredOn : String? = null,
+	val username : String? = null,
+	val avatarUrl : String? = null,
 )

@@ -34,6 +34,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.hide_password_text
@@ -43,6 +44,8 @@ import lbtool.composeapp.generated.resources.login
 import lbtool.composeapp.generated.resources.password_label
 import lbtool.composeapp.generated.resources.registration_title
 import lbtool.composeapp.generated.resources.show_password_text
+import lbtool.composeapp.generated.resources.successregbody
+import lbtool.composeapp.generated.resources.successregtitle
 import lbtool.composeapp.generated.resources.username
 import org.jetbrains.compose.resources.stringResource
 import retrieveToken
@@ -50,6 +53,7 @@ import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.requests.LoginRequest
 import ru.isntrui.lb.client.responses.LoginResponse
 import ru.isntrui.lb.client.storage.TokenStorage
+import ru.isntrui.lb.client.utils.NetworkUtils
 
 data class Creds(
     val username: String,
@@ -79,138 +83,177 @@ fun Login(navController: NavController) {
     var responseMessage by remember { mutableStateOf("") } // State for response message
     var responseCode by remember { mutableStateOf<HttpStatusCode?>(null) }
     val existingToken = retrieveToken()
-    if (existingToken != null) {
-        navController.navigate("dashboard")
-    }
-
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            "Lyceum Bells",
-            fontFamily = MaterialTheme.typography.headlineLarge.fontFamily,
-            fontSize = 120.sp
-        )
-        Spacer(Modifier.height(30.dp))
-
-        OutlinedTextField(
-            label = { Text(stringResource(Res.string.username)) },
-            value = loginState.username,
-            onValueChange = {
-                loginState = loginState.copy(username = it.lowercase())
-                loginState = if (!loginState.isUsernameValid()) {
-                    loginState.copy(isShownUsernameError = true)
-                } else {
-                    loginState.copy(isShownUsernameError = false)
-                }
-            },
-            isError = loginState.isShownUsernameError,
-            supportingText = {
-                if (loginState.isShownUsernameError) {
-                    if (loginState.username.length < 3) Text("Не менее 3 символов")
-                    else if (loginState.username.length > 16) Text("Не более 16 символов")
-                    else Text(stringResource(Res.string.incorrectuname))
-                }
-            }
-        )
-
-        OutlinedTextField(
-            label = { Text(stringResource(Res.string.password_label)) },
-            value = loginState.password,
-            onValueChange = {
-                loginState = loginState.copy(password = it)
-                loginState = if (!loginState.isPasswordValid()) {
-                    loginState.copy(isShownPasswordError = true)
-                } else {
-                    loginState.copy(isShownPasswordError = false)
-                }
-            },
-            isError = loginState.isShownPasswordError,
-            supportingText = {
-                if (loginState.isShownPasswordError) {
-                    Text(stringResource(Res.string.incorrpassform))
-                }
-            },
-            visualTransformation = if (!loginState.isShownPassword) PasswordVisualTransformation() else VisualTransformation.None,
-            trailingIcon = {
-                if (loginState.password.isNotEmpty()) {
-                    TextButton(onClick = {
-                        loginState = loginState.copy(isShownPassword = !loginState.isShownPassword)
-                    }) {
-                        Text(if (loginState.isShownPassword) stringResource(Res.string.show_password_text) else stringResource(Res.string.hide_password_text))
-                    }
-                }
-            },
-            singleLine = true
-        )
-
-        val scope = rememberCoroutineScope()
-        if (responseMessage.isNotEmpty()) {
-            Text(
-                responseMessage,
-                color = if (responseCode == HttpStatusCode.OK) Color.Green else Color.Red,
-                style = MaterialTheme.typography.headlineMedium
-            )
-        } else {
-            Text("", style = MaterialTheme.typography.headlineLarge, fontSize = 10.sp)
-        }
-        Spacer(modifier = Modifier.height(3.dp))
-        Button(onClick = {
-            scope.launch {
-                try {
-                    val response: HttpResponse =
-                        Net.client().post("http://igw.isntrui.ru/api/auth/sign-in") {
-                            setBody(LoginRequest(loginState.username.lowercase(), loginState.password))
-                            contentType(ContentType.Application.Json)
-                        }
-                    responseMessage = when (response.status) {
-                        HttpStatusCode.OK -> "Вы вошли"
-                        HttpStatusCode.BadRequest -> "Неверный логин или пароль"
-                        HttpStatusCode.InternalServerError -> "Технические проблемы. Сообщите, пожалуйста, своему координатору"
-                        else -> "Неизвестная ошибка"
-                    }
-                    if (response.status == HttpStatusCode.OK) {
-                        val respTok = Json.decodeFromString<LoginResponse>(response.bodyAsText())
-                        TokenStorage.saveToken(respTok.token)
-                        Net.recreate()
-                        navController.navigate("dashboard")
-                    }
-
-                    responseCode = response.status
-                } catch (e: Throwable) {
-                    responseMessage = "Ошибка сети: ${e.message}"
-                }
-            }
-        }, enabled = loginState.isUsernameValid() && loginState.isPasswordValid()) {
-            Text(stringResource(Res.string.login))
-        }
-
-        OutlinedButton(onClick = {
-            navController.navigate("registration")
-        }) {
-            Text(stringResource(Res.string.registration_title))
-        }
-        val openDialog = remember { mutableStateOf(false) }
-
-        TextButton(onClick = {openDialog.value = true}) {
-            Text("забыл/-а пароль?")
-        }
-
+    if (!NetworkUtils.isNetworkAvailable()) {
+        var openDialog = remember { mutableStateOf(true) }
         if (openDialog.value) {
             AlertDialog(
-                onDismissRequest = { openDialog.value = false},
-                title = { Text(text = "забыл/-а пароль? :c", style = MaterialTheme.typography.headlineMedium) },
-                text = { Text("напиши своему координатору по этому вопросу – он тебе поможет!", fontSize = 18.sp, style = MaterialTheme.typography.headlineSmall) },
+                onDismissRequest = { openDialog.value = false },
+                title = { Text(text = "нет инета :(") },
+                text = { Text("для корректной работы программы нужен интернет, увы\nзаходи, как появится!") },
                 confirmButton = {
-                    Button({ openDialog.value = false }) {
-                        Text("OK", fontSize = 22.sp)
+                    OutlinedButton(
+                        {
+                        }
+                    ) {
+                        Text("ну лан", fontSize = 22.sp)
                     }
                 }
             )
         }
+    } else {
+        if (existingToken != null) {
+            navController.navigate("dashboard")
+        }
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "Lyceum Bells",
+                fontFamily = MaterialTheme.typography.headlineLarge.fontFamily,
+                fontSize = 120.sp
+            )
+            Spacer(Modifier.height(30.dp))
 
-        Spacer(modifier = Modifier.height(30.dp))
+            OutlinedTextField(
+                label = { Text(stringResource(Res.string.username)) },
+                value = loginState.username,
+                onValueChange = {
+                    loginState = loginState.copy(username = it.lowercase())
+                    loginState = if (!loginState.isUsernameValid()) {
+                        loginState.copy(isShownUsernameError = true)
+                    } else {
+                        loginState.copy(isShownUsernameError = false)
+                    }
+                },
+                isError = loginState.isShownUsernameError,
+                supportingText = {
+                    if (loginState.isShownUsernameError) {
+                        if (loginState.username.length < 3) Text("Не менее 3 символов")
+                        else if (loginState.username.length > 16) Text("Не более 16 символов")
+                        else Text(stringResource(Res.string.incorrectuname))
+                    }
+                }
+            )
+
+            OutlinedTextField(
+                label = { Text(stringResource(Res.string.password_label)) },
+                value = loginState.password,
+                onValueChange = {
+                    loginState = loginState.copy(password = it)
+                    loginState = if (!loginState.isPasswordValid()) {
+                        loginState.copy(isShownPasswordError = true)
+                    } else {
+                        loginState.copy(isShownPasswordError = false)
+                    }
+                },
+                isError = loginState.isShownPasswordError,
+                supportingText = {
+                    if (loginState.isShownPasswordError) {
+                        Text(stringResource(Res.string.incorrpassform))
+                    }
+                },
+                visualTransformation = if (!loginState.isShownPassword) PasswordVisualTransformation() else VisualTransformation.None,
+                trailingIcon = {
+                    if (loginState.password.isNotEmpty()) {
+                        TextButton(onClick = {
+                            loginState =
+                                loginState.copy(isShownPassword = !loginState.isShownPassword)
+                        }) {
+                            Text(
+                                if (loginState.isShownPassword) stringResource(Res.string.show_password_text) else stringResource(
+                                    Res.string.hide_password_text
+                                )
+                            )
+                        }
+                    }
+                },
+                singleLine = true
+            )
+
+            val scope = rememberCoroutineScope()
+            if (responseMessage.isNotEmpty()) {
+                Text(
+                    responseMessage,
+                    color = if (responseCode == HttpStatusCode.OK) Color.Green else Color.Red,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            } else {
+                Text("", style = MaterialTheme.typography.headlineLarge, fontSize = 10.sp)
+            }
+            Spacer(modifier = Modifier.height(3.dp))
+            Button(onClick = {
+                scope.launch {
+                    try {
+                        val response: HttpResponse =
+                            Net.client().post("auth/sign-in") {
+                                setBody(
+                                    LoginRequest(
+                                        loginState.username.lowercase(),
+                                        loginState.password
+                                    )
+                                )
+                                contentType(ContentType.Application.Json)
+                            }
+                        responseMessage = when (response.status) {
+                            HttpStatusCode.OK -> "Вы вошли"
+                            HttpStatusCode.BadRequest -> "Неверный логин или пароль"
+                            HttpStatusCode.InternalServerError -> "Технические проблемы. Сообщите, пожалуйста, своему координатору"
+                            else -> "Неизвестная ошибка"
+                        }
+                        if (response.status == HttpStatusCode.OK) {
+                            val respTok =
+                                Json.decodeFromString<LoginResponse>(response.bodyAsText())
+                            TokenStorage.saveToken(respTok.token)
+                            Net.recreate()
+                            navController.navigate("dashboard")
+                        }
+
+                        responseCode = response.status
+                    } catch (e: Throwable) {
+                        responseMessage = "Ошибка сети: ${e.message}"
+                    }
+                }
+            }, enabled = loginState.isUsernameValid() && loginState.isPasswordValid()) {
+                Text(stringResource(Res.string.login))
+            }
+
+            OutlinedButton(onClick = {
+                navController.navigate("registration")
+            }) {
+                Text(stringResource(Res.string.registration_title))
+            }
+            val openDialog = remember { mutableStateOf(false) }
+
+            TextButton(onClick = { openDialog.value = true }) {
+                Text("забыл/-а пароль?")
+            }
+
+            if (openDialog.value) {
+                AlertDialog(
+                    onDismissRequest = { openDialog.value = false },
+                    title = {
+                        Text(
+                            text = "забыл/-а пароль? :c",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    },
+                    text = {
+                        Text(
+                            "напиши своему координатору по этому вопросу – он тебе поможет!",
+                            fontSize = 18.sp,
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    },
+                    confirmButton = {
+                        Button({ openDialog.value = false }) {
+                            Text("OK", fontSize = 22.sp)
+                        }
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(30.dp))
+        }
     }
 }

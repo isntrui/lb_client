@@ -48,7 +48,9 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import kotlinx.coroutines.launch
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.*
@@ -126,6 +128,7 @@ fun Registration(navController: NavController) {
     }
     val focusRequester = remember { FocusRequester() }
     var repeatPass by remember { mutableStateOf("") }
+
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
@@ -307,9 +310,8 @@ fun Registration(navController: NavController) {
                     userState = userState.copy(username = it.lowercase())
                     scope.launch {
                         cond.isUsernameTaken = false
-                        if (Net.client().get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                        if (Net.client().get("auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
                             cond.isUsernameTaken = true
-                            println(userState.email)
                         }
                     }
                 }
@@ -328,9 +330,8 @@ fun Registration(navController: NavController) {
                     if (cond.isEmailCorrect) {
                         scope.launch {
                             cond.isEmailTaken = false
-                            if (Net.client().get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                            if (Net.client().get("auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
                                 cond.isEmailTaken = true
-                                println(userState.email)
                             }
                         }
                     }
@@ -393,18 +394,17 @@ fun Registration(navController: NavController) {
             onClick = {
                 scope.launch {
                     try {
-                        if (Net.client().get("http://igw.isntrui.ru/api/auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                        if (Net.client().get("auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
                             cond.isUsernameTaken = true
-                            println(userState.username)
                         }
-                        if (Net.client().get("http://igw.isntrui.ru/api/auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                        if (Net.client().get("auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
                             cond.isEmailTaken = true
-                            println(userState.email)
                         }
                         if (!cond.isUsernameTaken && !cond.isEmailTaken) {
                             val response: HttpResponse =
-                                Net.client().post("http://igw.isntrui.ru/api/auth/sign-up") {
+                                Net.client().post("auth/sign-up") {
                                     setBody(userState)
+                                    contentType(ContentType.Application.Json)
                                 }
                             responseCode = response.status
                             if (responseCode == HttpStatusCode.NotFound) {
@@ -412,8 +412,6 @@ fun Registration(navController: NavController) {
                             } else if (responseCode == HttpStatusCode.Unauthorized) {
                                 inviteErrRes = Res.string.emaildoesntmatchinvite
                             }
-                            println(response.bodyAsText())
-                            println(response.status)
                             if (responseCode == HttpStatusCode.OK) openDialog.value = true
                         }
                     } catch (e: Throwable) {
