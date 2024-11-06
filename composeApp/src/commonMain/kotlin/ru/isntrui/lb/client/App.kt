@@ -9,6 +9,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.isntrui.lb.client.ui.auth.Login
 import ru.isntrui.lb.client.ui.auth.Registration
 import ru.isntrui.lb.client.ui.Dashboard
+import ru.isntrui.lb.client.ui.SongsSection
 
 @Composable
 @Preview
@@ -24,6 +25,9 @@ fun App() {
             }
             composable("dashboard") { // Add the dashboard route here
                 Dashboard(navController)
+            }
+            composable("songs") {
+                SongsSection(navController)
             }
         }
     }

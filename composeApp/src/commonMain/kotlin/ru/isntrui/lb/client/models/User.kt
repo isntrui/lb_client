@@ -6,7 +6,7 @@ import ru.isntrui.lb.client.models.enums.Role
 
 @Serializable
 data class User(
-    val id: Long = 0,
+    val id: Long? = null,
     val email: String = "",
     val password: String = "",
     val role: Role = Role.GRADUATED,

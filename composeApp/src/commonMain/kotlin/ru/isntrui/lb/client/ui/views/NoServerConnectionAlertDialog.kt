@@ -18,7 +18,7 @@ fun NoServerConnectionAlertDialog(e: Exception) {
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
     if (openDialog.value) {
         AlertDialog(
-            onDismissRequest = { openDialog.value = false },
+            onDismissRequest = {  },
             title = { Text(text = "Проблемы с подключением к серверу...") },
             text = { Text("Напиши своему координатору и скинь следующий текст: \n${e.message}") },
             confirmButton = {

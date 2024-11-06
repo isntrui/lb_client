@@ -61,6 +61,8 @@ kotlin {
             implementation("com.russhwolf:multiplatform-settings-no-arg:1.2.0")
             implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc02")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.0.0-rc02")
+            implementation("io.github.vinceglb:filekit-core:0.8.7")
+            implementation("io.github.vinceglb:filekit-compose:0.8.7")
         }
 
 

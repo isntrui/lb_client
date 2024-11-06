@@ -34,7 +34,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.hide_password_text
@@ -44,8 +43,6 @@ import lbtool.composeapp.generated.resources.login
 import lbtool.composeapp.generated.resources.password_label
 import lbtool.composeapp.generated.resources.registration_title
 import lbtool.composeapp.generated.resources.show_password_text
-import lbtool.composeapp.generated.resources.successregbody
-import lbtool.composeapp.generated.resources.successregtitle
 import lbtool.composeapp.generated.resources.username
 import org.jetbrains.compose.resources.stringResource
 import retrieveToken
@@ -82,31 +79,31 @@ fun Login(navController: NavController) {
     var loginState by remember { mutableStateOf(Creds("", "")) }
     var responseMessage by remember { mutableStateOf("") } // State for response message
     var responseCode by remember { mutableStateOf<HttpStatusCode?>(null) }
+    val openNoConnectionDialog = remember { mutableStateOf(true) }
     val existingToken = retrieveToken()
-    if (!NetworkUtils.isNetworkAvailable()) {
-        var openDialog = remember { mutableStateOf(true) }
-        if (openDialog.value) {
-            AlertDialog(
-                onDismissRequest = { openDialog.value = false },
-                title = { Text(text = "нет инета :(") },
-                text = { Text("для корректной работы программы нужен интернет, увы\nзаходи, как появится!") },
-                confirmButton = {
-                    OutlinedButton(
-                        {
-                        }
-                    ) {
-                        Text("ну лан", fontSize = 22.sp)
+    if (!NetworkUtils.isNetworkAvailable() && openNoConnectionDialog.value) {
+        AlertDialog(
+            onDismissRequest = { openNoConnectionDialog.value = false },
+            title = { Text(text = "нет инета :(") },
+            text = { Text("для корректной работы программы нужен интернет, увы\nжми кнопку ниже, как появится!") },
+            confirmButton = {
+                OutlinedButton(
+                    {
+                        navController.navigate("login")
                     }
+                ) {
+                    Text("ну лан", fontSize = 22.sp)
                 }
-            )
-        }
+            }
+        )
     } else {
         if (existingToken != null) {
             navController.navigate("dashboard")
         }
         Column(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 "Lyceum Bells",

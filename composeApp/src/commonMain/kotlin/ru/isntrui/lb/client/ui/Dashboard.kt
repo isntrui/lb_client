@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -25,6 +28,8 @@ import kotlinx.datetime.LocalDate
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.chooserole
 import lbtool.composeapp.generated.resources.defaultAvatar
+import lbtool.composeapp.generated.resources.musicnote
+import lbtool.composeapp.generated.resources.status
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import ru.isntrui.lb.client.Net
@@ -79,7 +84,22 @@ fun Dashboard(navController: NavController) {
                                 icon = { Icon(Icons.Filled.Add, "плюс") }
                             )
                         }
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.weight(0.5f))
+                        IconButton(onClick = { navController.navigate("songs") }) {
+                            Image(
+                                painter = painterResource(Res.drawable.musicnote),
+                                contentDescription = "Звонки",
+                                colorFilter = ColorFilter.tint(Color.Black)
+                            )
+                        }
+                        Spacer(modifier = Modifier.weight(0.5f))
+                        IconButton(onClick = { }, enabled = false) {
+                            Icon(
+                                Icons.Filled.Home,
+                                contentDescription = "Home",
+                                tint = Color.Gray
+                            )
+                        }
                         IconButton(onClick = { navController.navigate("settings") }) {
                             Icon(Icons.Filled.Settings, contentDescription = "Settings")
                         }
@@ -189,14 +209,14 @@ fun LoadingScreen(user: User) {
             ) {
                 if (isAgain) {
                     Text(
-                        "Секундочку, пожалуйста!",
+                        "секундочку, пожалуйста!",
                         style = MaterialTheme.typography.headlineLarge,
                         fontSize = 72.sp
                     )
                     Spacer(modifier = Modifier.height(40.dp))
                 } else if (user.firstName.isNotEmpty()) {
                     Text(
-                        "Привет, ${user.firstName}!",
+                        "привет, ${user.firstName}!",
                         style = MaterialTheme.typography.headlineLarge,
                         fontSize = 72.sp
                     )
@@ -257,6 +277,7 @@ fun TaskCard(task: Task) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
             modifier = Modifier.padding(12.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -275,15 +296,38 @@ fun TaskCard(task: Task) {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Status: ${task.taskStatus}",
+                    text = "назначил ${task.createdBy.firstName} ${task.createdBy.lastName} \n${
+                        formatDate(
+                            task.createdOn.dayOfMonth,
+                            task.createdOn.monthNumber
+                        )
+                    } ${task.createdOn.hour}:${task.createdOn.minute}",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.secondary
                     )
                 )
             }
-            val deadColor = if (isDatePassed(task.deadline)) Color.Red else MaterialTheme.colorScheme.primary
+            val deadColor =
+                if (isDatePassed(task.deadline)) Color.Red else MaterialTheme.colorScheme.primary
+            OutlinedCard(Modifier.padding(10.dp)) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 6.dp)
+                ) {
+                    Image(
+                        painterResource(Res.drawable.status),
+                        contentDescription = "",
+                        contentScale = ContentScale.Crop,
+                    )
+                    Text(
+                        text = task.taskStatus,
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
             OutlinedCard(Modifier.padding(10.dp)) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -323,7 +367,15 @@ fun CenteredExtendedFloatingActionButton(
 
 @Composable
 fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDismiss: () -> Unit) {
-    var taskState by remember { mutableStateOf(TaskRequest(createdBy = user, wave = wave, takenBy = null)) }
+    var taskState by remember {
+        mutableStateOf(
+            TaskRequest(
+                createdBy = user,
+                wave = wave,
+                takenBy = null
+            )
+        )
+    }
     val scope = rememberCoroutineScope()
     var isRoleDropDownExpanded by remember { mutableStateOf(false) }
     var isUserDropDownExpanded by remember { mutableStateOf(false) }
@@ -338,7 +390,8 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
     var titleError by remember { mutableStateOf(false) }
     var descriptionError by remember { mutableStateOf(false) }
 
-    val roleText: String = if (itemPosition == -1) stringResource(Res.string.chooserole) else stringResource(Role.entries[itemPosition].res)
+    val roleText: String =
+        if (itemPosition == -1) stringResource(Res.string.chooserole) else stringResource(Role.entries[itemPosition].res)
 
     LaunchedEffect(Unit) {
         actualWaves = fetchAllActualWaves(Net.client())
@@ -426,7 +479,10 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                         onClick = { isRoleDropDownExpanded = !isRoleDropDownExpanded }
                     ) {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
+                            verticalArrangement = Arrangement.spacedBy(
+                                8.dp,
+                                alignment = Alignment.CenterVertically
+                            ),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row {
@@ -478,13 +534,17 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                             onClick = { isUserDropDownExpanded = !isUserDropDownExpanded }
                         ) {
                             Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
+                                verticalArrangement = Arrangement.spacedBy(
+                                    8.dp,
+                                    alignment = Alignment.CenterVertically
+                                ),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Row {
                                     Spacer(Modifier.width(20.dp).height(5.dp))
                                     Text(
-                                        selectedUser?.let { it.firstName + " " + it.lastName } ?: "выберать пользователя",
+                                        selectedUser?.let { it.firstName + " " + it.lastName + if (selectedRole == Role.TECHNICAL) " (${it.building})" else "" }
+                                            ?: "выбрать пользователя",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontSize = 16.sp
                                     )
@@ -500,11 +560,12 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                                         DropdownMenuItem(
                                             text = {
                                                 Box(
-                                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                        .padding(16.dp),
                                                     contentAlignment = Alignment.CenterStart
                                                 ) {
                                                     Text(
-                                                        text = user.firstName + " " + user.lastName,
+                                                        text = user.firstName + " " + user.lastName + if (selectedRole == Role.TECHNICAL) " (${user.building})" else "",
                                                         style = MaterialTheme.typography.bodyMedium
                                                     )
                                                 }
@@ -536,13 +597,17 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                         onClick = { isWaveDropDownExpanded = !isWaveDropDownExpanded }
                     ) {
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
+                            verticalArrangement = Arrangement.spacedBy(
+                                8.dp,
+                                alignment = Alignment.CenterVertically
+                            ),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row {
                                 Spacer(Modifier.width(20.dp).height(5.dp))
                                 Text(
-                                    selectedWave?.let { "#" + it.id + " " + it.title } ?: "выбрать волну",
+                                    selectedWave?.let { "#" + it.id + " " + it.title }
+                                        ?: "выбрать волну",
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontSize = 16.sp
                                 )
@@ -594,9 +659,12 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                         }
                     }
                 },
-                enabled = !deadlineError && !titleError && !descriptionError && taskState.title.isNotBlank() && taskState.description.isNotBlank() && selectedUser != null && selectedWave != null
+                enabled = !deadlineError && !titleError && !descriptionError && taskState.title.isNotBlank() && taskState.description.isNotBlank() && selectedUser != null && selectedWave != null && validateUserRole(
+                    selectedRole,
+                    selectedUser
+                )
             ) {
-                Text("OK", fontSize = 22.sp)
+                Text("ок", fontSize = 22.sp)
             }
         }
     )
@@ -604,4 +672,8 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
 
 suspend fun loadTasks(): List<Task> {
     return fetchTasks(Net.client()).sortedWith(compareBy { it.deadline })
+}
+
+fun validateUserRole(selectedRole: Role?, selectedUser: UserTask?): Boolean {
+    return selectedRole != null && selectedUser != null && selectedRole == selectedUser.role
 }

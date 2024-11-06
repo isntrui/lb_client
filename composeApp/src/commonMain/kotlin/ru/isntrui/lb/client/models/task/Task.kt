@@ -1,7 +1,7 @@
 package ru.isntrui.lb.client.models.task
 
-import androidx.compose.ui.Modifier
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 import ru.isntrui.lb.client.models.Wave
 
@@ -11,7 +11,7 @@ data class Task (
 	val title : String,
 	val description : String,
 	val deadline : LocalDate,
-	val createdOn : String,
+	val createdOn : LocalDateTime,
 	val createdBy : UserTask,
 	val taskStatus : String = "TODO",
 	val wave : Wave,
