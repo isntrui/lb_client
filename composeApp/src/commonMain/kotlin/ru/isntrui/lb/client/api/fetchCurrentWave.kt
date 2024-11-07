@@ -7,7 +7,7 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import ru.isntrui.lb.client.models.Wave
-import ru.isntrui.lb.client.models.task.Task
+import ru.isntrui.lb.client.models.enums.WaveStatus
 
 private val json = Json {
     ignoreUnknownKeys = true
@@ -23,13 +23,13 @@ suspend fun fetchCurrentWave(client: HttpClient): Wave {
             json.decodeFromString<Wave>(responseBody)
         } else {
             println("Error fetching tasks: ${response.status}")
-            Wave()
+            Wave(status = WaveStatus.PLANNED)
         }
     } catch (e: SerializationException) {
         println("Serialization error: ${e.message}")
-        Wave()
+        Wave(status = WaveStatus.PLANNED)
     } catch (e: Exception) {
         println("Error fetching tasks: ${e.message}")
-        Wave()
+        Wave(status = WaveStatus.PLANNED)
     }
 }

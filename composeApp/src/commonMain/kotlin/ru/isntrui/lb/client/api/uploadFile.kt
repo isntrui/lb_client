@@ -1,6 +1,7 @@
 package ru.isntrui.lb.client.api
 
 import io.ktor.client.*
+import io.ktor.client.plugins.timeout
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.client.request.forms.*
@@ -16,5 +17,10 @@ suspend fun uploadFile(client: HttpClient, fileName: String, fileBytes: ByteArra
         }
     ) {
         method = HttpMethod.Post
+        timeout {
+            requestTimeoutMillis = 300_000
+            connectTimeoutMillis = 300_000
+            socketTimeoutMillis = 300_000
+        }
     }
 }

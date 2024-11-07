@@ -9,6 +9,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.isntrui.lb.client.ui.auth.Login
 import ru.isntrui.lb.client.ui.auth.Registration
 import ru.isntrui.lb.client.ui.Dashboard
+import ru.isntrui.lb.client.ui.DesignSection
 import ru.isntrui.lb.client.ui.SongsSection
 
 @Composable
@@ -28,6 +29,9 @@ fun App() {
             }
             composable("songs") {
                 SongsSection(navController)
+            }
+            composable("designs") {
+                DesignSection(navController)
             }
         }
     }

@@ -4,6 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 import ru.isntrui.lb.client.models.Wave
+import ru.isntrui.lb.client.models.enums.TaskStatus
 
 @Serializable
 data class Task (
@@ -13,7 +14,7 @@ data class Task (
 	val deadline : LocalDate,
 	val createdOn : LocalDateTime,
 	val createdBy : UserTask,
-	val taskStatus : String = "TODO",
+	val taskStatus : TaskStatus = TaskStatus.TODO,
 	val wave : Wave,
 	val takenBy : UserTask?,
 	val takenOn : String?,

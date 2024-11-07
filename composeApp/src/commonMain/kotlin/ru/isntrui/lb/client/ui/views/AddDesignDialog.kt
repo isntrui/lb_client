@@ -15,7 +15,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.api.uploadFile
-import ru.isntrui.lb.client.models.Song
 import ru.isntrui.lb.client.models.User
 
 import androidx.compose.runtime.rememberCoroutineScope
@@ -23,22 +22,21 @@ import androidx.compose.ui.unit.sp
 import io.github.vinceglb.filekit.core.extension
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.launch
-import ru.isntrui.lb.client.api.createSong
+import ru.isntrui.lb.client.api.createDesign
 import ru.isntrui.lb.client.api.fetchAllActualWaves
 import ru.isntrui.lb.client.api.fetchCurrentUser
+import ru.isntrui.lb.client.models.Design
 import ru.isntrui.lb.client.models.Wave
 import ru.isntrui.lb.client.models.enums.FileType
 import ru.isntrui.lb.client.ui.auth.DropdownArrow
 
 @Composable
-fun AddSongDialog(
+fun AddDesignDialog(
     onDismissRequest: () -> Unit
 ) {
     var songName by remember { mutableStateOf("выбрать файл") }
     var selectedFile by remember { mutableStateOf<PlatformFile?>(null) }
     var title by remember { mutableStateOf("") }
-    var artist by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
     var selectedWave by remember { mutableStateOf<Wave?>(null) }
     var waves by remember { mutableStateOf(emptyList<Wave>()) }
     var url by remember { mutableStateOf("") }
@@ -52,7 +50,7 @@ fun AddSongDialog(
     }
     val launcher = rememberFilePickerLauncher(
         type = PickerType.File(
-            extensions = listOf("mp3", "wav", "flac"),
+            extensions = listOf("psd", "png", "jpg", "jpeg", "svg", "gif", "webp", "bmp", "tiff", "ico", "heif", "heic", "pdf", "pptx", "key", "fig"),
         ),
         mode = PickerMode.Single,
         title = "Выбери песенку",
@@ -61,10 +59,10 @@ fun AddSongDialog(
         selectedFile = file
     }
     val isFormValid =
-        title.isNotBlank() && artist.isNotBlank() && description.isNotBlank() && selectedFile != null && selectedWave != null
+        title.isNotBlank() && selectedFile != null && selectedWave != null
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("добавить новую песенку") },
+        title = { Text("добавить новый дизайн") },
         text = {
             Column(
                 verticalArrangement = Arrangement.Center,
@@ -75,18 +73,6 @@ fun AddSongDialog(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("название") }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = artist,
-                    onValueChange = { artist = it },
-                    label = { Text("исполнитель") }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("описание") }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(onClick = {
@@ -147,23 +133,22 @@ fun AddSongDialog(
                             Net.client(),
                             selectedFile!!.name + "." + selectedFile!!.extension,
                             selectedFile!!.readBytes(),
-                            FileType.AUDIO
+                            FileType.MEDIA
                         ).bodyAsText()
                         println(url)
-                        val newSong = Song(
-                            title = title,
-                            artist = artist,
-                            description = description,
-                            url = url,
-                            madeBy = currentUser,
+                        val newDesign = Design(
+                            id = 0,
+                            createdBy = currentUser,
                             createdOn = Clock.System.now()
                                 .toLocalDateTime(TimeZone.currentSystemDefault()),
                             wave = selectedWave!!,
+                            url = url,
+                            title = title,
+                            approved = false,
                             approvedBy = null,
-                            approvedOn = null,
-                            id = null
+                            approvedOn = null
                         )
-                        createSong(Net.client(), newSong)
+                        createDesign(Net.client(), newDesign)
                         triggerUpload = false
                         onDismissRequest()
                     }

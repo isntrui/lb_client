@@ -23,9 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import lbtool.composeapp.generated.resources.Res
+import lbtool.composeapp.generated.resources.brush
 import lbtool.composeapp.generated.resources.chooserole
 import lbtool.composeapp.generated.resources.defaultAvatar
 import lbtool.composeapp.generated.resources.musicnote
@@ -36,6 +38,8 @@ import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.api.*
 import ru.isntrui.lb.client.models.*
 import ru.isntrui.lb.client.models.enums.Role
+import ru.isntrui.lb.client.models.enums.TaskStatus
+import ru.isntrui.lb.client.models.enums.WaveStatus
 import ru.isntrui.lb.client.models.task.Task
 import ru.isntrui.lb.client.models.task.UserTask
 import ru.isntrui.lb.client.requests.TaskRequest
@@ -52,7 +56,7 @@ fun Dashboard(navController: NavController) {
     var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
     var user by remember { mutableStateOf(User()) }
     var openDialog by remember { mutableStateOf(false) }
-    var currentWave by remember { mutableStateOf(Wave()) }
+    var currentWave by remember { mutableStateOf(Wave(status = WaveStatus.PLANNED)) }
     var loading by remember { mutableStateOf(true) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var exception by remember { mutableStateOf<Exception?>(null) }
@@ -85,23 +89,45 @@ fun Dashboard(navController: NavController) {
                             )
                         }
                         Spacer(modifier = Modifier.weight(0.5f))
-                        IconButton(onClick = { navController.navigate("songs") }) {
-                            Image(
-                                painter = painterResource(Res.drawable.musicnote),
-                                contentDescription = "Звонки",
-                                colorFilter = ColorFilter.tint(Color.Black)
+                        if (user.role in listOf(
+                                Role.COORDINATOR,
+                                Role.HEAD,
+                                Role.ADMIN,
+                                Role.SOUNDDESIGNER
                             )
+                        ) {
+                            IconButton(onClick = { navController.navigate("songs") }) {
+                                Image(
+                                    painter = painterResource(Res.drawable.musicnote),
+                                    contentDescription = "Звонки",
+                                    colorFilter = ColorFilter.tint(Color.Black)
+                                )
+                            }
+                        }
+                        if (user.role in listOf(
+                            Role.COORDINATOR,
+                            Role.HEAD,
+                            Role.ADMIN,
+                            Role.DESIGNER
+                        )) {
+                            IconButton(onClick = { navController.navigate("designs") }) {
+                                Icon(
+                                    painterResource(Res.drawable.brush),
+                                    contentDescription = "Дизайны",
+                                    tint = Color.Black
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.weight(0.5f))
                         IconButton(onClick = { }, enabled = false) {
                             Icon(
                                 Icons.Filled.Home,
-                                contentDescription = "Home",
+                                contentDescription = "Хоме",
                                 tint = Color.Gray
                             )
                         }
                         IconButton(onClick = { navController.navigate("settings") }) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                            Icon(Icons.Filled.Settings, contentDescription = "Настройки")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -128,7 +154,7 @@ fun Dashboard(navController: NavController) {
                         if (tasks.isNotEmpty()) {
                             LazyColumn {
                                 items(tasks) { task ->
-                                    TaskCard(task)
+                                    TaskCard(task, coroutineScope = rememberCoroutineScope(), navController)
                                 }
                                 items(1) {
                                     Column(
@@ -262,18 +288,38 @@ fun UserCard(user: User) {
                     "${user.firstName} ${user.lastName}",
                     style = MaterialTheme.typography.headlineMedium
                 )
-                Text(stringResource(user.role.res))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(stringResource(user.role.res))
+                    Text(" | ", modifier = Modifier.padding(horizontal = 4.dp))
+                    Text(user.building)
+                }
             }
         }
     }
 }
 
 @Composable
-fun TaskCard(task: Task) {
+fun TaskCard(task: Task, coroutineScope: CoroutineScope, navController: NavController) {
+    var expanded by remember { mutableStateOf(false) }
+    if (expanded) {
+        TaskInfoDialog(task = task, onDismiss = { expanded = false }, onStatusChange = {
+            coroutineScope.launch {
+                changeStatus(Net.client(), task, TaskStatus.valueOf(it))
+                expanded = false
+                navController.navigate("dashboard")
+            }
+        })
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp, horizontal = 12.dp)
+            .padding(vertical = 6.dp, horizontal = 12.dp),
+        onClick = {
+            expanded = true
+        }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -310,7 +356,7 @@ fun TaskCard(task: Task) {
                 )
             }
             val deadColor =
-                if (isDatePassed(task.deadline)) Color.Red else MaterialTheme.colorScheme.primary
+                if (isDatePassed(task.deadline) && task.taskStatus != TaskStatus.DONE) Color.Red else MaterialTheme.colorScheme.primary
             OutlinedCard(Modifier.padding(10.dp)) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -322,7 +368,7 @@ fun TaskCard(task: Task) {
                         contentScale = ContentScale.Crop,
                     )
                     Text(
-                        text = task.taskStatus,
+                        text = task.taskStatus.toString(),
                         modifier = Modifier.padding(horizontal = 10.dp),
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -445,7 +491,7 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
                 )
                 if (descriptionError) {
                     Text(
-                        text = "Description cannot be blank",
+                        text = "описание не может быть пустым",
                         color = Color.Red,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp)
@@ -676,4 +722,90 @@ suspend fun loadTasks(): List<Task> {
 
 fun validateUserRole(selectedRole: Role?, selectedUser: UserTask?): Boolean {
     return selectedRole != null && selectedUser != null && selectedRole == selectedUser.role
+}
+
+@Composable
+fun TaskInfoDialog(task: Task, onDismiss: () -> Unit, onStatusChange: (String) -> Unit) {
+    var selectedStatus by remember { mutableStateOf(task.taskStatus) }
+    var expanded by remember { mutableStateOf(false) }
+    val statuses = TaskStatus.entries
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(text = "про таску") },
+        text = {
+            Column(
+                modifier = Modifier.padding(8.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontSize = 18.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = task.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "создал/-а ${task.createdBy.firstName} ${task.createdBy.lastName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "дедлайн ${formatDate(task.deadline.dayOfMonth, task.deadline.monthNumber)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "статус",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { expanded = true }
+                ) {
+                    Box {
+                        Text(
+                            text = selectedStatus.toString(),
+                            modifier = Modifier
+                                .padding(16.dp)
+                        )
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            statuses.forEach { status ->
+                                DropdownMenuItem(
+                                    text = { Text(status.toString()) },
+                                    onClick = {
+                                        selectedStatus = status
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (selectedStatus != task.taskStatus) {
+                    onStatusChange(selectedStatus.toString())
+                }
+                onDismiss()
+            }) {
+                Text("доне")
+            }
+        }
+    )
 }
