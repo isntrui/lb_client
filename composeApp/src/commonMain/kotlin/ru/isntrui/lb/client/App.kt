@@ -6,11 +6,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import ru.isntrui.lb.client.ui.AdminPanel
 import ru.isntrui.lb.client.ui.auth.Login
 import ru.isntrui.lb.client.ui.auth.Registration
 import ru.isntrui.lb.client.ui.Dashboard
 import ru.isntrui.lb.client.ui.DesignSection
 import ru.isntrui.lb.client.ui.SongsSection
+import ru.isntrui.lb.client.ui.UsersAdminPanel
+import ru.isntrui.lb.client.ui.WavesAdminPanel
 
 @Composable
 @Preview
@@ -24,7 +27,7 @@ fun App() {
             composable("registration") {
                 Registration(navController)
             }
-            composable("dashboard") { // Add the dashboard route here
+            composable("dashboard") {
                 Dashboard(navController)
             }
             composable("songs") {
@@ -32,6 +35,15 @@ fun App() {
             }
             composable("designs") {
                 DesignSection(navController)
+            }
+            composable("settings") {
+                AdminPanel(navController)
+            }
+            composable("users") {
+                UsersAdminPanel(navController)
+            }
+            composable("waves") {
+                WavesAdminPanel(navController)
             }
         }
     }

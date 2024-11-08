@@ -17,9 +17,13 @@ import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModalDateInput(onDateSelected: (LocalDate) -> Unit) {
+fun ModalDateInput(
+    initialDate: LocalDate? = null,
+    onDateSelected: (LocalDate) -> Unit,
+    text: String
+) {
     var showDatePicker by remember { mutableStateOf(false) }
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var selectedDate by remember { mutableStateOf(initialDate) }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = selectedDate?.atStartOfDayIn(TimeZone.currentSystemDefault())
             ?.toEpochMilliseconds()
@@ -38,7 +42,7 @@ fun ModalDateInput(onDateSelected: (LocalDate) -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "дедлайн: ${selectedDate?.toString() ?: "не выбран"}",
+                text = "${text}: ${selectedDate?.toString() ?: "не выбран"}",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
@@ -76,3 +80,9 @@ fun ModalDateInput(onDateSelected: (LocalDate) -> Unit) {
         }
     }
 }
+
+@Composable
+fun ModalDateInput(
+    initialDate: LocalDate? = null,
+    onDateSelected: (LocalDate) -> Unit,
+) { ModalDateInput(initialDate, onDateSelected, "дедлайн")}

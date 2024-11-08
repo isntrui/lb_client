@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -47,6 +48,7 @@ import lbtool.composeapp.generated.resources.username
 import org.jetbrains.compose.resources.stringResource
 import retrieveToken
 import ru.isntrui.lb.client.Net
+import ru.isntrui.lb.client.api.fetchCurrentUserResp
 import ru.isntrui.lb.client.requests.LoginRequest
 import ru.isntrui.lb.client.responses.LoginResponse
 import ru.isntrui.lb.client.storage.TokenStorage
@@ -75,12 +77,32 @@ data class Creds(
 
 @Composable
 fun Login(navController: NavController) {
-
     var loginState by remember { mutableStateOf(Creds("", "")) }
-    var responseMessage by remember { mutableStateOf("") } // State for response message
+    var responseMessage by remember { mutableStateOf("") }
     var responseCode by remember { mutableStateOf<HttpStatusCode?>(null) }
     val openNoConnectionDialog = remember { mutableStateOf(true) }
     val existingToken = retrieveToken()
+    val scope = rememberCoroutineScope()
+
+    suspend fun checkTokenValidity() {
+        try {
+            val response = fetchCurrentUserResp(Net.client())
+            if (response.status == HttpStatusCode.OK) {
+                navController.navigate("dashboard")
+            } else if (response.status != HttpStatusCode.InternalServerError && TokenStorage.getToken() != null) {
+                TokenStorage.clearToken()
+            }
+        } catch (e: Exception) {
+            TokenStorage.clearToken()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (existingToken != null) {
+            checkTokenValidity()
+        }
+    }
+
     if (!NetworkUtils.isNetworkAvailable() && openNoConnectionDialog.value) {
         AlertDialog(
             onDismissRequest = { openNoConnectionDialog.value = false },
@@ -96,10 +118,7 @@ fun Login(navController: NavController) {
                 }
             }
         )
-    } else {
-        if (existingToken != null) {
-            navController.navigate("dashboard")
-        }
+    } else if (TokenStorage.getToken() == null) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -168,7 +187,6 @@ fun Login(navController: NavController) {
                 singleLine = true
             )
 
-            val scope = rememberCoroutineScope()
             if (responseMessage.isNotEmpty()) {
                 Text(
                     responseMessage,
@@ -249,7 +267,6 @@ fun Login(navController: NavController) {
                     }
                 )
             }
-
             Spacer(modifier = Modifier.height(30.dp))
         }
     }

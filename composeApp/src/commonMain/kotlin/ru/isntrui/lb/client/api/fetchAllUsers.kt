@@ -11,10 +11,8 @@ private val json = Json {
     ignoreUnknownKeys = true
 }
 
-suspend fun fetchCurrentUser(client: HttpClient): User {
-    val response: HttpResponse = client.get("user/")
+suspend fun fetchAllUsers(client: HttpClient): List<User> {
+    val response: HttpResponse = client.get("user/all")
     val responseBody = response.bodyAsText()
-    return json.decodeFromString<User>(responseBody)
+    return json.decodeFromString<List<User>>(responseBody)
 }
-
-suspend fun fetchCurrentUserResp(client: HttpClient) = client.get("user/")

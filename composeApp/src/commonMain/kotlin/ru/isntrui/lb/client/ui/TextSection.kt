@@ -26,6 +26,7 @@ import coil3.compose.AsyncImage
 import io.github.vinceglb.filekit.core.FileKit
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
+import io.ktor.websocket.Frame
 import kotlinx.coroutines.launch
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.brush
@@ -47,7 +48,7 @@ import ru.isntrui.lb.client.ui.views.AddDesignDialog
 import ru.isntrui.lb.client.utils.formatDate
 
 @Composable
-fun DesignSection(navController: NavController) {
+fun TextSection(navController: NavController) {
     var designs by remember { mutableStateOf(emptyList<Design>()) }
     var isLoading by remember { mutableStateOf(true) }
     var dialogOpen by remember { mutableStateOf(false) }
@@ -122,12 +123,15 @@ fun DesignSection(navController: NavController) {
                         )
                     }
                 }
-                IconButton(onClick = { }, enabled = false) {
+                IconButton(onClick = { navController.navigate("designs") }) {
                     Icon(
                         painterResource(Res.drawable.brush),
                         contentDescription = "Дизайны",
                         tint = Color.Gray
                     )
+                }
+                IconButton(onClick = { }, enabled = false) {
+
                 }
                 Spacer(modifier = Modifier.weight(0.5f))
                 IconButton(onClick = {
@@ -139,9 +143,9 @@ fun DesignSection(navController: NavController) {
                     )
                 }
                 if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN))
-                IconButton(onClick = { navController.navigate("settings") }) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                }
+                    IconButton(onClick = { navController.navigate("settings") }) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    }
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
@@ -198,7 +202,7 @@ fun DesignSection(navController: NavController) {
 }
 
 @Composable
-fun DesignCard(design: Design, user: User, navController: NavController) {
+fun TextCard(design: Design, user: User, navController: NavController) {
     var showDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -462,18 +466,4 @@ fun DesignCard(design: Design, user: User, navController: NavController) {
             }
         }
     }
-}
-
-fun getFileExtension(url: String): String {
-    return url.substringAfterLast('.', "")
-}
-
-suspend fun download(design: Design) {
-    val resp = Net.client().get(design.url)
-    val bytes = resp.readRawBytes()
-    FileKit.saveFile(
-        baseName = "D${design.id} ${design.title} (${design.createdBy.firstName} ${design.createdBy.lastName})",
-        extension = getFileExtension(design.url),
-        bytes = bytes
-    )
 }

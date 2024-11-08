@@ -129,6 +129,7 @@ fun SongsSection(navController: NavController) {
                         contentDescription = "хоме"
                     )
                 }
+                if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN))
                 IconButton(onClick = { navController.navigate("settings") }) {
                     Icon(Icons.Filled.Settings, contentDescription = "Settings")
                 }
@@ -149,7 +150,11 @@ fun SongsSection(navController: NavController) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Spacer(Modifier.weight(1f))
-                    UserCard(user)
+                    UserCard(user, {
+                        isLoading = true
+                        navController.navigate("songs")
+                        isLoading = false
+                    })
                 }
                 Spacer(Modifier.fillMaxWidth().height(10.dp))
                 HorizontalDivider()

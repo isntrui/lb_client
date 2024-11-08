@@ -8,9 +8,9 @@ import ru.isntrui.lb.client.models.enums.WaveStatus
 data class Wave (
 	val id : Int = 0,
 	val title : String = "",
-	val startsOn : LocalDate = LocalDate(2021, 1, 1),
-	val endsOn : LocalDate = LocalDate(2021, 1, 14),
+	val startsOn : LocalDate,
+	val endsOn : LocalDate,
 	val status : WaveStatus,
-	val songs : List<String> = emptyList(),
+	val songs : Set<String> = emptySet(),
 	val createdAt : LocalDate = LocalDate(2020, 12, 31),
 )

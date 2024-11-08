@@ -81,7 +81,6 @@ kotlin {
 
 
 
-
 compose.desktop {
     application {
         mainClass = "ru.isntrui.lb.client.MainKt"

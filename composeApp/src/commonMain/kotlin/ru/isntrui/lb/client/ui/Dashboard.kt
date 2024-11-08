@@ -2,6 +2,7 @@ package ru.isntrui.lb.client.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +14,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,9 +27,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.core.PickerMode
+import io.github.vinceglb.filekit.core.PickerType
+import io.github.vinceglb.filekit.core.extension
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.brush
 import lbtool.composeapp.generated.resources.chooserole
@@ -37,6 +49,7 @@ import org.jetbrains.compose.resources.stringResource
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.api.*
 import ru.isntrui.lb.client.models.*
+import ru.isntrui.lb.client.models.enums.FileType
 import ru.isntrui.lb.client.models.enums.Role
 import ru.isntrui.lb.client.models.enums.TaskStatus
 import ru.isntrui.lb.client.models.enums.WaveStatus
@@ -56,10 +69,12 @@ fun Dashboard(navController: NavController) {
     var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
     var user by remember { mutableStateOf(User()) }
     var openDialog by remember { mutableStateOf(false) }
-    var currentWave by remember { mutableStateOf(Wave(status = WaveStatus.PLANNED)) }
+    var currentWave by remember { mutableStateOf(Wave(status = WaveStatus.PLANNED, startsOn = Clock.System.now().toLocalDateTime(
+        TimeZone.currentSystemDefault()).date, endsOn = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)) }
     var loading by remember { mutableStateOf(true) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var exception by remember { mutableStateOf<Exception?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         try {
@@ -105,11 +120,12 @@ fun Dashboard(navController: NavController) {
                             }
                         }
                         if (user.role in listOf(
-                            Role.COORDINATOR,
-                            Role.HEAD,
-                            Role.ADMIN,
-                            Role.DESIGNER
-                        )) {
+                                Role.COORDINATOR,
+                                Role.HEAD,
+                                Role.ADMIN,
+                                Role.DESIGNER
+                            )
+                        ) {
                             IconButton(onClick = { navController.navigate("designs") }) {
                                 Icon(
                                     painterResource(Res.drawable.brush),
@@ -126,9 +142,10 @@ fun Dashboard(navController: NavController) {
                                 tint = Color.Gray
                             )
                         }
-                        IconButton(onClick = { navController.navigate("settings") }) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Настройки")
-                        }
+                        if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN))
+                            IconButton(onClick = { navController.navigate("settings") }) {
+                                Icon(Icons.Filled.Settings, contentDescription = "Настройки")
+                            }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     VerticalDivider()
@@ -147,14 +164,22 @@ fun Dashboard(navController: NavController) {
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
                             Spacer(Modifier.weight(1f))
-                            UserCard(user)
+                            UserCard(user) {
+                                loading = true
+                                navController.navigate("dashboard")
+                                loading = false
+                            }
                         }
                         Spacer(Modifier.fillMaxWidth().height(10.dp))
                         HorizontalDivider()
                         if (tasks.isNotEmpty()) {
                             LazyColumn {
                                 items(tasks) { task ->
-                                    TaskCard(task, coroutineScope = rememberCoroutineScope(), navController)
+                                    TaskCard(
+                                        task,
+                                        coroutineScope = rememberCoroutineScope(),
+                                        navController
+                                    )
                                 }
                                 items(1) {
                                     Column(
@@ -206,6 +231,7 @@ fun Dashboard(navController: NavController) {
             }
         )
     }
+
     if (openDialog) {
         CreateTaskDialog(
             user = user,
@@ -255,32 +281,77 @@ fun LoadingScreen(user: User) {
 }
 
 @Composable
-fun UserCard(user: User) {
+fun UserCard(user: User, onAvatarChange: () -> Unit) {
+    var isHovered by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val launcher = rememberFilePickerLauncher(
+        type = PickerType.Image,
+        mode = PickerMode.Single,
+        title = "выбери аву"
+    ) { file ->
+        if (file != null) {
+            isLoading = true
+            scope.launch {
+                val re = uploadFile(Net.client(), user.id.toString() + "." + file.extension, file.readBytes(), FileType.IMG)
+                val newUser = user.copy(avatarUrl = re.bodyAsText())
+                updateUser(Net.client(), newUser)
+                isLoading = false
+                onAvatarChange()
+            }
+        }
+    }
+
     Card {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(verticalArrangement = Arrangement.Center) {
-                if (user.avatarUrl != null) {
-                    AsyncImage(
-                        model = user.avatarUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, Color.Gray, CircleShape)
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.Gray, CircleShape)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                isHovered = true
+                                tryAwaitRelease()
+                                isHovered = false
+                            }
+                        )
+                    }
+                    .clickable { launcher.launch() }
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
-                    Image(
-                        painter = painterResource(Res.drawable.defaultAvatar),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, Color.Gray, CircleShape)
-                    )
+                    if (user.avatarUrl != null) {
+                        AsyncImage(
+                            model = user.avatarUrl,
+                            contentDescription = null,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(Res.drawable.defaultAvatar),
+                            contentDescription = null,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
+                    if (isHovered) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(24.dp)
+                        )
+                    }
                 }
             }
             Column(verticalArrangement = Arrangement.Center) {
@@ -344,7 +415,7 @@ fun TaskCard(task: Task, coroutineScope: CoroutineScope, navController: NavContr
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "назначил ${task.createdBy.firstName} ${task.createdBy.lastName} \n${
+                    text = "назначил/-а ${task.createdBy.firstName} ${task.createdBy.lastName} \n${
                         formatDate(
                             task.createdOn.dayOfMonth,
                             task.createdOn.monthNumber
@@ -717,7 +788,7 @@ fun CreateTaskDialog(user: User, wave: Wave, navController: NavController, onDis
 }
 
 suspend fun loadTasks(): List<Task> {
-    return fetchTasks(Net.client()).sortedWith(compareBy { it.deadline })
+    return fetchTasks(Net.client()).sortedWith(compareBy<Task> { it.deadline }.thenBy { it.taskStatus })
 }
 
 fun validateUserRole(selectedRole: Role?, selectedUser: UserTask?): Boolean {
@@ -758,7 +829,12 @@ fun TaskInfoDialog(task: Task, onDismiss: () -> Unit, onStatusChange: (String) -
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "дедлайн ${formatDate(task.deadline.dayOfMonth, task.deadline.monthNumber)}",
+                    text = "дедлайн ${
+                        formatDate(
+                            task.deadline.dayOfMonth,
+                            task.deadline.monthNumber
+                        )
+                    }",
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 14.sp
                 )
