@@ -327,12 +327,17 @@ fun WaveCard(wave: Wave, user: User, navController: NavController, songs: List<S
                         style = MaterialTheme.typography.headlineMedium,
                         fontSize = 18.sp
                     )
+                    Text(
+                        "✅ ${formatDate(wave.createdAt.dayOfMonth, wave.createdAt.monthNumber)} ${wave.createdAt.year}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontSize = 18.sp
+                    )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                     Text(
                         "\uD83D\uDCC6 ${formatDate(
-                                wave.createdAt.dayOfMonth,
-                                wave.createdAt.monthNumber)
-                        } ${wave.createdAt.year} — ${formatDate(
+                                wave.startsOn.dayOfMonth,
+                                wave.startsOn.monthNumber)
+                        } ${wave.startsOn.year} — ${formatDate(
                             wave.endsOn.dayOfMonth,
                             wave.endsOn.monthNumber
                         )} ${wave.endsOn.year}",

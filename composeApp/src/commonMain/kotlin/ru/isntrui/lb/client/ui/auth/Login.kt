@@ -177,8 +177,8 @@ fun Login(navController: NavController) {
                                 loginState.copy(isShownPassword = !loginState.isShownPassword)
                         }) {
                             Text(
-                                if (loginState.isShownPassword) stringResource(Res.string.show_password_text) else stringResource(
-                                    Res.string.hide_password_text
+                                if (loginState.isShownPassword) stringResource(Res.string.hide_password_text) else stringResource(
+                                    Res.string.show_password_text
                                 )
                             )
                         }
