@@ -61,9 +61,22 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import io.ktor.client.request.get
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import lbtool.composeapp.generated.resources.copy
+import lbtool.composeapp.generated.resources.email
+import lbtool.composeapp.generated.resources.emailtaken
+import lbtool.composeapp.generated.resources.entercorrect
 import ru.isntrui.lb.client.api.deleteUser
 import ru.isntrui.lb.client.api.updateUser
+import ru.isntrui.lb.client.ui.auth.isValidEmail
+import kotlin.math.abs
 
 @Composable
 fun UserAdminCard(user: User, onClick: () -> Unit, userInit: User) {
@@ -209,7 +222,7 @@ fun UsersAdminPanel(navController: NavController) {
     var errorMessage by remember { mutableStateOf("") }
     var selectedUser by remember { mutableStateOf<User?>(null) }
     val scope = rememberCoroutineScope()
-
+    var isAddingInvite by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         try {
             user = fetchCurrentUser(Net.client())
@@ -220,7 +233,11 @@ fun UsersAdminPanel(navController: NavController) {
             isLoading = false
         }
     }
-
+    if (isAddingInvite) {
+        CreateInviteDialog(user) {
+            isAddingInvite = false
+        }
+    }
     if (isLoading) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -242,7 +259,9 @@ fun UsersAdminPanel(navController: NavController) {
             NavigationRail {
                 if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN)) {
                     CenteredExtendedFloatingActionButton(
-                        onClick = {  },
+                        onClick = {
+                            isAddingInvite = true
+                        },
                         icon = {
                             Icon(Icons.Filled.Add, "плюс")
                         }
@@ -349,5 +368,89 @@ fun UsersAdminPanel(navController: NavController) {
             },
             userInit = user
         )
+    }
+}
+
+@Composable
+fun CreateInviteDialog(user: User, onDismiss: () -> Unit) {
+    var isCreated by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val clipboardManager: ClipboardManager = LocalClipboardManager.current
+
+    AlertDialog(
+        onDismissRequest = { },
+        title = { Text(text = "новый юзер") },
+        text = {
+            Column {
+                if (!isCreated) {
+                    var isEmailCorrect by remember { mutableStateOf(true) }
+                    var isEmailTaken by remember { mutableStateOf(false) }
+
+                    OutlinedTextField(
+                        label = { Text(stringResource(Res.string.email)) },
+                        value = email,
+                        isError = !isEmailCorrect || isEmailTaken,
+                        supportingText = {
+                            if (!isEmailCorrect) Text(stringResource(Res.string.entercorrect))
+                            if (isEmailTaken) Text(stringResource(Res.string.emailtaken))
+                        },
+                        onValueChange = {
+                            email = it
+                            validateEmail(it, scope) { emailCorrect, emailTaken ->
+                                isEmailCorrect = emailCorrect
+                                isEmailTaken = emailTaken
+                            }
+                        }
+                    )
+                } else
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("Код приглашения для ${email}: $code")
+                        IconButton(onClick = {
+                            clipboardManager.setText(AnnotatedString("Код приглашения для ${email}: $code"))
+                        }) {
+                            Icon(
+                                painterResource(Res.drawable.copy),
+                                contentDescription = "копировать"
+                            )
+                        }
+                    }
+            }
+        },
+        confirmButton = {
+            if (!isCreated)
+                Button({
+                    scope.launch {
+                        isCreated = true
+                    }
+                }) {
+                    Text("создать")
+                }
+            else {
+                Button({
+                    onDismiss()
+                }) {
+                    Text("Закрыть")
+                }
+            }
+        })
+}
+
+fun validateEmail(email: String, scope: CoroutineScope, onEmailChecked: (Boolean, Boolean) -> Unit) {
+    val isEmailCorrect = isValidEmail(email)
+    if (isEmailCorrect) {
+        scope.launch {
+            val isEmailTaken = Net.client().get("auth/check/email?email=$email")
+            println(isEmailTaken)
+            onEmailChecked(isEmailCorrect, isEmailTaken.status == HttpStatusCode.OK)
+        }
+    } else {
+        onEmailChecked(isEmailCorrect, false)
     }
 }
