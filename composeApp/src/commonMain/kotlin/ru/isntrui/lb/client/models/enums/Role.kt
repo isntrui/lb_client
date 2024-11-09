@@ -12,12 +12,12 @@ import lbtool.composeapp.generated.resources.WRITER
 import org.jetbrains.compose.resources.StringResource
 
 enum class Role(val res: StringResource) {
+    GRADUATED(Res.string.GRADUATED),
     TECHNICAL(Res.string.TECHNICAL),
     DESIGNER(Res.string.DESIGNER),
     WRITER(Res.string.WRITER),
     SOUNDDESIGNER(Res.string.SOUNDDESIGNER),
     COORDINATOR(Res.string.COORDINATOR),
     HEAD(Res.string.HEAD),
-    GRADUATED(Res.string.GRADUATED),
     ADMIN(Res.string.ADMIN)
 }

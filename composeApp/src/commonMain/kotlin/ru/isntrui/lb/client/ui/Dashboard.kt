@@ -42,7 +42,9 @@ import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.brush
 import lbtool.composeapp.generated.resources.chooserole
 import lbtool.composeapp.generated.resources.defaultAvatar
+import lbtool.composeapp.generated.resources.logout
 import lbtool.composeapp.generated.resources.musicnote
+import lbtool.composeapp.generated.resources.pencil
 import lbtool.composeapp.generated.resources.status
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -56,6 +58,7 @@ import ru.isntrui.lb.client.models.enums.WaveStatus
 import ru.isntrui.lb.client.models.task.Task
 import ru.isntrui.lb.client.models.task.UserTask
 import ru.isntrui.lb.client.requests.TaskRequest
+import ru.isntrui.lb.client.storage.TokenStorage
 import ru.isntrui.lb.client.ui.auth.DropdownArrow
 import ru.isntrui.lb.client.ui.views.ModalDateInput
 import ru.isntrui.lb.client.ui.views.NoServerConnectionAlertDialog
@@ -69,8 +72,17 @@ fun Dashboard(navController: NavController) {
     var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
     var user by remember { mutableStateOf(User()) }
     var openDialog by remember { mutableStateOf(false) }
-    var currentWave by remember { mutableStateOf(Wave(status = WaveStatus.PLANNED, startsOn = Clock.System.now().toLocalDateTime(
-        TimeZone.currentSystemDefault()).date, endsOn = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)) }
+    var currentWave by remember {
+        mutableStateOf(
+            Wave(
+                status = WaveStatus.PLANNED,
+                startsOn = Clock.System.now().toLocalDateTime(
+                    TimeZone.currentSystemDefault()
+                ).date,
+                endsOn = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            )
+        )
+    }
     var loading by remember { mutableStateOf(true) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var exception by remember { mutableStateOf<Exception?>(null) }
@@ -134,6 +146,21 @@ fun Dashboard(navController: NavController) {
                                 )
                             }
                         }
+                        if (user.role in listOf(
+                                Role.COORDINATOR,
+                                Role.HEAD,
+                                Role.ADMIN,
+                                Role.WRITER
+                            )
+                        ) {
+                            IconButton(onClick = { navController.navigate("texts") }) {
+                                Icon(
+                                    painterResource(Res.drawable.pencil),
+                                    contentDescription = "тексты",
+                                    tint = Color.Black
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.weight(0.5f))
                         IconButton(onClick = { }, enabled = false) {
                             Icon(
@@ -164,7 +191,7 @@ fun Dashboard(navController: NavController) {
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
                             Spacer(Modifier.weight(1f))
-                            UserCard(user) {
+                            UserCard(user, navController) {
                                 loading = true
                                 navController.navigate("dashboard")
                                 loading = false
@@ -281,7 +308,7 @@ fun LoadingScreen(user: User) {
 }
 
 @Composable
-fun UserCard(user: User, onAvatarChange: () -> Unit) {
+fun UserCard(user: User, navController: NavController, onAvatarChange: () -> Unit) {
     var isHovered by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -293,7 +320,12 @@ fun UserCard(user: User, onAvatarChange: () -> Unit) {
         if (file != null) {
             isLoading = true
             scope.launch {
-                val re = uploadFile(Net.client(), user.id.toString() + "." + file.extension, file.readBytes(), FileType.IMG)
+                val re = uploadFile(
+                    Net.client(),
+                    user.id.toString() + "." + file.extension,
+                    file.readBytes(),
+                    FileType.IMG
+                )
                 val newUser = user.copy(avatarUrl = re.bodyAsText())
                 updateUser(Net.client(), newUser)
                 isLoading = false
@@ -301,72 +333,106 @@ fun UserCard(user: User, onAvatarChange: () -> Unit) {
             }
         }
     }
-
-    Card {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    var isOpened by remember {
+        mutableStateOf(false)
+    }
+    Column {
+        Card(
+            onClick = {
+                isOpened = true
+            }
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Color.Gray, CircleShape)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                isHovered = true
-                                tryAwaitRelease()
-                                isHovered = false
-                            }
-                        )
-                    }
-                    .clickable { launcher.launch() }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                } else {
-                    if (user.avatarUrl != null) {
-                        AsyncImage(
-                            model = user.avatarUrl,
-                            contentDescription = null,
-                            modifier = Modifier.matchParentSize()
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.Gray, CircleShape)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    isHovered = true
+                                    tryAwaitRelease()
+                                    isHovered = false
+                                }
+                            )
+                        }
+                        .clickable { launcher.launch() }
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
                         )
                     } else {
-                        Image(
-                            painter = painterResource(Res.drawable.defaultAvatar),
-                            contentDescription = null,
-                            modifier = Modifier.matchParentSize()
-                        )
+                        if (user.avatarUrl != null) {
+                            AsyncImage(
+                                model = user.avatarUrl,
+                                contentDescription = null,
+                                modifier = Modifier.matchParentSize()
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(Res.drawable.defaultAvatar),
+                                contentDescription = null,
+                                modifier = Modifier.matchParentSize()
+                            )
+                        }
+                        if (isHovered) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(24.dp)
+                            )
+                        }
                     }
-                    if (isHovered) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            tint = Color.White,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .size(24.dp)
-                        )
+                }
+                Column(verticalArrangement = Arrangement.Center) {
+                    Text(
+                        "${user.firstName} ${user.lastName}",
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(stringResource(user.role.res))
+                        Text(" | ", modifier = Modifier.padding(horizontal = 4.dp))
+                        Text(user.building)
                     }
                 }
             }
-            Column(verticalArrangement = Arrangement.Center) {
-                Text(
-                    "${user.firstName} ${user.lastName}",
-                    style = MaterialTheme.typography.headlineMedium
+        }
+        if (isOpened) {
+            DropdownMenu(
+                expanded = isOpened,
+                onDismissRequest = { isOpened = false },
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painterResource(Res.drawable.logout),
+                                "logout",
+                                modifier = Modifier.padding(3.dp)
+                            )
+                            Text("Выйти")
+                        }
+                    },
+                    onClick = {
+                        TokenStorage.clearToken()
+                        navController.navigate("loginExited")
+                    },
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(stringResource(user.role.res))
-                    Text(" | ", modifier = Modifier.padding(horizontal = 4.dp))
-                    Text(user.building)
-                }
             }
         }
     }

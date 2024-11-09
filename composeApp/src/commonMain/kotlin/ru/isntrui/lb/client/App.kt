@@ -12,6 +12,7 @@ import ru.isntrui.lb.client.ui.auth.Registration
 import ru.isntrui.lb.client.ui.Dashboard
 import ru.isntrui.lb.client.ui.DesignSection
 import ru.isntrui.lb.client.ui.SongsSection
+import ru.isntrui.lb.client.ui.TextSection
 import ru.isntrui.lb.client.ui.UsersAdminPanel
 import ru.isntrui.lb.client.ui.WavesAdminPanel
 
@@ -44,6 +45,12 @@ fun App() {
             }
             composable("waves") {
                 WavesAdminPanel(navController)
+            }
+            composable("loginExited") {
+                Login(navController, true)
+            }
+            composable("texts") {
+                TextSection(navController)
             }
         }
     }

@@ -23,16 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import io.github.vinceglb.filekit.core.FileKit
-import io.ktor.client.request.get
-import io.ktor.client.statement.readRawBytes
-import io.ktor.websocket.Frame
 import kotlinx.coroutines.launch
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.brush
 import lbtool.composeapp.generated.resources.defaultAvatar
 import lbtool.composeapp.generated.resources.download
 import lbtool.composeapp.generated.resources.musicnote
+import lbtool.composeapp.generated.resources.pencil
 import lbtool.composeapp.generated.resources.status
 import org.jetbrains.compose.resources.painterResource
 import ru.isntrui.lb.client.Net
@@ -127,11 +124,22 @@ fun TextSection(navController: NavController) {
                     Icon(
                         painterResource(Res.drawable.brush),
                         contentDescription = "Дизайны",
-                        tint = Color.Gray
                     )
                 }
-                IconButton(onClick = { }, enabled = false) {
-
+                if (user.role in listOf(
+                        Role.COORDINATOR,
+                        Role.HEAD,
+                        Role.ADMIN,
+                        Role.WRITER
+                    )
+                ) {
+                    IconButton(onClick = { }, enabled = false) {
+                        Icon(
+                            painterResource(Res.drawable.pencil),
+                            contentDescription = "Тексты",
+                            tint = Color.Gray
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.weight(0.5f))
                 IconButton(onClick = {
@@ -162,7 +170,7 @@ fun TextSection(navController: NavController) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Spacer(Modifier.weight(1f))
-                    UserCard(user) {
+                    UserCard(user, navController) {
                         isLoading = true
                         navController.navigate("designs")
                         isLoading = false
@@ -171,7 +179,7 @@ fun TextSection(navController: NavController) {
                 Spacer(Modifier.fillMaxWidth().height(10.dp))
                 HorizontalDivider()
                 designs.forEach { design ->
-                    DesignCard(design, user, navController)
+                    TextCard(design, user, navController)
                 }
             }
         }

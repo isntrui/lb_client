@@ -50,21 +50,20 @@ actual object TokenStorage {
     }
 
     actual fun getToken(): String? {
-        return if (System.getProperty("token") != null) System.getProperty("token") else {
-            if (!File(TOKEN_FILE_PATH).exists() || !File(KEY_FILE_PATH).exists()) {
-                println()
-                return null
-            }
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            val secretKey = loadKey()
-            val data = File(TOKEN_FILE_PATH).readBytes()
-            val iv = data.copyOfRange(0, 16)
-            val encryptedToken = data.copyOfRange(16, data.size)
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv))
-            val token = String(cipher.doFinal(encryptedToken))
-            System.setProperty("token", token)
-            token
+
+        if (!File(TOKEN_FILE_PATH).exists() || !File(KEY_FILE_PATH).exists()) {
+            println()
+            return null
         }
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        val secretKey = loadKey()
+        val data = File(TOKEN_FILE_PATH).readBytes()
+        val iv = data.copyOfRange(0, 16)
+        val encryptedToken = data.copyOfRange(16, data.size)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv))
+        val token = String(cipher.doFinal(encryptedToken))
+        System.setProperty("token", token)
+        return token
     }
 
     actual fun clearToken() {

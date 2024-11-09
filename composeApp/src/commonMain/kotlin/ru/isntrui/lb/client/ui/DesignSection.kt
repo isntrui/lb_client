@@ -32,6 +32,7 @@ import lbtool.composeapp.generated.resources.brush
 import lbtool.composeapp.generated.resources.defaultAvatar
 import lbtool.composeapp.generated.resources.download
 import lbtool.composeapp.generated.resources.musicnote
+import lbtool.composeapp.generated.resources.pencil
 import lbtool.composeapp.generated.resources.status
 import org.jetbrains.compose.resources.painterResource
 import ru.isntrui.lb.client.Net
@@ -129,6 +130,21 @@ fun DesignSection(navController: NavController) {
                         tint = Color.Gray
                     )
                 }
+                if (user.role in listOf(
+                        Role.COORDINATOR,
+                        Role.HEAD,
+                        Role.ADMIN,
+                        Role.WRITER
+                    )
+                ) {
+                    IconButton(onClick = { navController.navigate("texts") }) {
+                        Icon(
+                            painterResource(Res.drawable.pencil),
+                            contentDescription = "Тексты",
+                            tint = Color.Black
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.weight(0.5f))
                 IconButton(onClick = {
                     navController.navigate("dashboard")
@@ -158,7 +174,7 @@ fun DesignSection(navController: NavController) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Spacer(Modifier.weight(1f))
-                    UserCard(user) {
+                    UserCard(user, navController) {
                         isLoading = true
                         navController.navigate("designs")
                         isLoading = false

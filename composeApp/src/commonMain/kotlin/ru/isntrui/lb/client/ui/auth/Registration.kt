@@ -310,7 +310,7 @@ fun Registration(navController: NavController) {
                     userState = userState.copy(username = it.lowercase())
                     scope.launch {
                         cond.isUsernameTaken = false
-                        if (Net.client().get("auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                        if (Net.client().get("auth/check/username?username=" + userState.username).bodyAsText() == "true") {
                             cond.isUsernameTaken = true
                         }
                     }
@@ -318,7 +318,7 @@ fun Registration(navController: NavController) {
             )
             OutlinedTextField(
                 label = { Text(stringResource(Res.string.email)) },
-                value = userState.email,
+                value = userState.email.lowercase(),
                 isError = !cond.isEmailCorrect || cond.isEmailTaken,
                 supportingText = {
                     if (!cond.isEmailCorrect) Text(stringResource(Res.string.entercorrect))
@@ -326,11 +326,11 @@ fun Registration(navController: NavController) {
                 },
                 onValueChange = {
                     cond.isEmailCorrect = isValidEmail(it)
-                    userState = userState.copy(email = it)
+                    userState = userState.copy(email = it.lowercase())
                     if (cond.isEmailCorrect) {
                         scope.launch {
                             cond.isEmailTaken = false
-                            if (Net.client().get("auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                            if (Net.client().get("auth/check/email?email=" + userState.email.lowercase()).bodyAsText() == "true") {
                                 cond.isEmailTaken = true
                             }
                         }
@@ -394,10 +394,10 @@ fun Registration(navController: NavController) {
             onClick = {
                 scope.launch {
                     try {
-                        if (Net.client().get("auth/check/username?username=" + userState.username).status == HttpStatusCode.OK) {
+                        if (Net.client().get("auth/check/username?username=" + userState.username).bodyAsText() == "true") {
                             cond.isUsernameTaken = true
                         }
-                        if (Net.client().get("auth/check/email?email=" + userState.email).status == HttpStatusCode.OK) {
+                        if (Net.client().get("auth/check/email?email=" + userState.email).bodyAsText() == "true") {
                             cond.isEmailTaken = true
                         }
                         if (!cond.isUsernameTaken && !cond.isEmailTaken) {

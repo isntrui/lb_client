@@ -65,16 +65,20 @@ import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import io.ktor.client.request.get
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import lbtool.composeapp.generated.resources.copy
 import lbtool.composeapp.generated.resources.email
 import lbtool.composeapp.generated.resources.emailtaken
 import lbtool.composeapp.generated.resources.entercorrect
+import lbtool.composeapp.generated.resources.pencil
+import ru.isntrui.lb.client.api.createInvite
 import ru.isntrui.lb.client.api.deleteUser
+import ru.isntrui.lb.client.api.fetchAllInvites
+import ru.isntrui.lb.client.api.isUserExists
 import ru.isntrui.lb.client.api.updateUser
+import ru.isntrui.lb.client.models.Invite
 import ru.isntrui.lb.client.ui.auth.isValidEmail
 import kotlin.math.abs
 
@@ -234,7 +238,7 @@ fun UsersAdminPanel(navController: NavController) {
         }
     }
     if (isAddingInvite) {
-        CreateInviteDialog(user) {
+        CreateInviteDialog {
             isAddingInvite = false
         }
     }
@@ -283,11 +287,32 @@ fun UsersAdminPanel(navController: NavController) {
                         )
                     }
                 }
+                if (user.role in listOf(
+                    Role.COORDINATOR,
+                    Role.HEAD,
+                    Role.ADMIN,
+                    Role.DESIGNER
+                ))
                 IconButton(onClick = { navController.navigate("designs") }) {
                     Icon(
                         painterResource(Res.drawable.brush),
                         contentDescription = "Дизайны",
                     )
+                }
+                if (user.role in listOf(
+                        Role.COORDINATOR,
+                        Role.HEAD,
+                        Role.ADMIN,
+                        Role.WRITER
+                    )
+                ) {
+                    IconButton(onClick = { navController.navigate("texts") }) {
+                        Icon(
+                            painterResource(Res.drawable.pencil),
+                            contentDescription = "Тексты",
+                            tint = Color.Black
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.weight(0.5f))
                 IconButton(onClick = { navController.navigate("dashboard") }) {
@@ -317,7 +342,7 @@ fun UsersAdminPanel(navController: NavController) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Spacer(Modifier.weight(1f))
-                    UserCard(user) {
+                    UserCard(user, navController) {
                         isLoading = true
                         navController.navigate("users")
                         isLoading = false
@@ -372,46 +397,58 @@ fun UsersAdminPanel(navController: NavController) {
 }
 
 @Composable
-fun CreateInviteDialog(user: User, onDismiss: () -> Unit) {
+fun CreateInviteDialog(onDismiss: () -> Unit) {
     var isCreated by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
-
+    var hasInvite by remember { mutableStateOf(false) }
+    var isEmailCorrect by remember { mutableStateOf(true) }
+    var isEmailTaken by remember { mutableStateOf(false) }
+    var isUserExistss by remember { mutableStateOf(false) }
     AlertDialog(
-        onDismissRequest = { },
+        onDismissRequest = { onDismiss() },
         title = { Text(text = "новый юзер") },
         text = {
             Column {
                 if (!isCreated) {
-                    var isEmailCorrect by remember { mutableStateOf(true) }
-                    var isEmailTaken by remember { mutableStateOf(false) }
-
                     OutlinedTextField(
                         label = { Text(stringResource(Res.string.email)) },
-                        value = email,
-                        isError = !isEmailCorrect || isEmailTaken,
+                        value = email.lowercase(),
+                        isError = !isEmailCorrect || isEmailTaken || hasInvite || isUserExistss,
                         supportingText = {
                             if (!isEmailCorrect) Text(stringResource(Res.string.entercorrect))
-                            if (isEmailTaken) Text(stringResource(Res.string.emailtaken))
+                            else if (isEmailTaken) Text(stringResource(Res.string.emailtaken))
+                            else if (hasInvite) Text("у этого юзера уже есть приглашение — напиши админу, чтоб решить этот вопрос")
+                            else if (isUserExistss) Text("этот юзер уже есть в системе")
                         },
                         onValueChange = {
+                            scope.launch {
+                                fetchAllInvites(Net.client()).forEach { invite ->
+                                    if (invite.email == it) {
+                                        hasInvite = true
+                                    }
+                                }
+                                isUserExistss = isUserExists(Net.client(), it)
+                            }
                             email = it
                             validateEmail(it, scope) { emailCorrect, emailTaken ->
                                 isEmailCorrect = emailCorrect
                                 isEmailTaken = emailTaken
                             }
+                            code = abs(email.lowercase().hashCode() / 40).toString()
                         }
                     )
-                } else
+                } else {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        Text("Код приглашения для ${email}: $code")
+                        Text(
+                            "Код приглашения для ${email}: $code",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                         IconButton(onClick = {
                             clipboardManager.setText(AnnotatedString("Код приглашения для ${email}: $code"))
                         }) {
@@ -421,6 +458,8 @@ fun CreateInviteDialog(user: User, onDismiss: () -> Unit) {
                             )
                         }
                     }
+                    Text("сохрани его, потом достать его не получится!")
+                }
             }
         },
         confirmButton = {
@@ -428,27 +467,33 @@ fun CreateInviteDialog(user: User, onDismiss: () -> Unit) {
                 Button({
                     scope.launch {
                         isCreated = true
+                        createInvite(Net.client(), Invite(code, email))
                     }
-                }) {
+                },
+                    enabled = email.isNotEmpty() && code.isNotEmpty() && isEmailCorrect && !isEmailTaken && !hasInvite) {
                     Text("создать")
                 }
             else {
                 Button({
                     onDismiss()
                 }) {
-                    Text("Закрыть")
+                    Text("закрыть")
                 }
             }
         })
 }
 
-fun validateEmail(email: String, scope: CoroutineScope, onEmailChecked: (Boolean, Boolean) -> Unit) {
-    val isEmailCorrect = isValidEmail(email)
+fun validateEmail(
+    email: String,
+    scope: CoroutineScope,
+    onEmailChecked: (Boolean, Boolean) -> Unit
+) {
+    val isEmailCorrect = isValidEmail(email.lowercase())
     if (isEmailCorrect) {
         scope.launch {
-            val isEmailTaken = Net.client().get("auth/check/email?email=$email")
-            println(isEmailTaken)
-            onEmailChecked(isEmailCorrect, isEmailTaken.status == HttpStatusCode.OK)
+            val isEmailTaken = Net.client().get("auth/check/email?email=${email.lowercase()}")
+            println(isEmailTaken.bodyAsText())
+            onEmailChecked(isEmailCorrect, isEmailTaken.bodyAsText() == "true")
         }
     } else {
         onEmailChecked(isEmailCorrect, false)

@@ -64,6 +64,7 @@ import lbtool.composeapp.generated.resources.brush
 import lbtool.composeapp.generated.resources.defaultAvatar
 import lbtool.composeapp.generated.resources.group
 import lbtool.composeapp.generated.resources.musicnote
+import lbtool.composeapp.generated.resources.pencil
 import lbtool.composeapp.generated.resources.status
 import lbtool.composeapp.generated.resources.wave
 import org.jetbrains.compose.resources.painterResource
@@ -93,9 +94,16 @@ fun AdminPanel(navController: NavController) {
     var tasks by remember { mutableStateOf(emptyList<Task>()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf("") }
-    var currentWave by remember { mutableStateOf(Wave(status = WaveStatus.PLANNED, startsOn = Clock.System.now().toLocalDateTime(
-        TimeZone.currentSystemDefault()).date,
-        endsOn = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)) }
+    var currentWave by remember {
+        mutableStateOf(
+            Wave(
+                status = WaveStatus.PLANNED, startsOn = Clock.System.now().toLocalDateTime(
+                    TimeZone.currentSystemDefault()
+                ).date,
+                endsOn = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            )
+        )
+    }
     LaunchedEffect(Unit) {
         try {
             tasks =
@@ -165,6 +173,21 @@ fun AdminPanel(navController: NavController) {
                         )
                     }
                 }
+                if (user.role in listOf(
+                        Role.COORDINATOR,
+                        Role.HEAD,
+                        Role.ADMIN,
+                        Role.WRITER
+                    )
+                ) {
+                    IconButton(onClick = { navController.navigate("texts") }) {
+                        Icon(
+                            painterResource(Res.drawable.pencil),
+                            contentDescription = "Тексты",
+                            tint = Color.Black
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.weight(0.5f))
                 IconButton(onClick = { navController.navigate("dashboard") }) {
                     Icon(
@@ -173,11 +196,13 @@ fun AdminPanel(navController: NavController) {
                     )
                 }
                 if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN))
-                IconButton(onClick = { navController.navigate("settings") }, enabled = false) {
-                    Icon(
-                        Icons.Outlined.Settings, contentDescription = "Настройки", tint = Color.Gray
-                    )
-                }
+                    IconButton(onClick = { navController.navigate("settings") }, enabled = false) {
+                        Icon(
+                            Icons.Outlined.Settings,
+                            contentDescription = "Настройки",
+                            tint = Color.Gray
+                        )
+                    }
                 Spacer(modifier = Modifier.height(8.dp))
             }
             VerticalDivider()
@@ -190,19 +215,19 @@ fun AdminPanel(navController: NavController) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Spacer(Modifier.weight(1f))
-                    UserCard(user,
-                        {
-                            isLoading = true
-                            navController.navigate("settings")
-                            isLoading = false
-                        })
+                    UserCard(user, navController)
+                    {
+                        isLoading = true
+                        navController.navigate("settings")
+                        isLoading = false
+                    }
                 }
                 Spacer(Modifier.fillMaxWidth().height(10.dp))
                 HorizontalDivider()
                 StatisticsSection(tasks)
                 Spacer(modifier = Modifier.height(16.dp))
                 if (tasks.isNotEmpty())
-                TasksList(tasks, navController)
+                    TasksList(tasks, navController)
                 else
                     Column(
                         modifier = Modifier.fillMaxSize(),

@@ -76,7 +76,7 @@ data class Creds(
 }
 
 @Composable
-fun Login(navController: NavController) {
+fun Login(navController: NavController, exited: Boolean = false) {
     var loginState by remember { mutableStateOf(Creds("", "")) }
     var responseMessage by remember { mutableStateOf("") }
     var responseCode by remember { mutableStateOf<HttpStatusCode?>(null) }
@@ -85,20 +85,22 @@ fun Login(navController: NavController) {
     val scope = rememberCoroutineScope()
 
     suspend fun checkTokenValidity() {
-        try {
-            val response = fetchCurrentUserResp(Net.client())
-            if (response.status == HttpStatusCode.OK) {
-                navController.navigate("dashboard")
-            } else if (response.status != HttpStatusCode.InternalServerError && TokenStorage.getToken() != null) {
+        if (!exited) {
+            try {
+                val response = fetchCurrentUserResp(Net.client())
+                if (response.status == HttpStatusCode.OK) {
+                    navController.navigate("dashboard")
+                } else if (response.status != HttpStatusCode.InternalServerError && TokenStorage.getToken() != null) {
+                    TokenStorage.clearToken()
+                }
+            } catch (e: Exception) {
                 TokenStorage.clearToken()
             }
-        } catch (e: Exception) {
-            TokenStorage.clearToken()
         }
     }
 
     LaunchedEffect(Unit) {
-        if (existingToken != null) {
+        if (existingToken != null && !exited) {
             checkTokenValidity()
         }
     }
@@ -118,7 +120,7 @@ fun Login(navController: NavController) {
                 }
             }
         )
-    } else if (TokenStorage.getToken() == null) {
+    } else if (TokenStorage.getToken() == null || exited) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
