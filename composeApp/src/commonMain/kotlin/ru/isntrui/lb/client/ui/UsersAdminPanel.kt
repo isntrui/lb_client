@@ -176,16 +176,22 @@ fun EditUserDialog(
                 ) {
                     Box {
                         Text(
-                            text = newUser.role.toString(),
+                            text = stringResource(newUser.role.res),
                             modifier = Modifier.padding(16.dp)
                         )
                         DropdownMenu(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
-                            Role.entries.forEach { role ->
+                            val availableRoles = when (userInit.role) {
+                                Role.HEAD -> Role.entries.filter { it !in listOf(Role.ADMIN, Role.HEAD) }
+                                Role.COORDINATOR -> Role.entries.filter { it !in listOf(Role.ADMIN, Role.HEAD, Role.COORDINATOR) }
+                                Role.ADMIN -> Role.entries
+                                else -> emptyList()
+                            }
+                            availableRoles.forEach { role ->
                                 DropdownMenuItem(
-                                    text = { Text(role.toString()) },
+                                    text = { Text(stringResource(role.res)) },
                                     onClick = {
                                         newUser = newUser.copy(role = role)
                                         expanded = false

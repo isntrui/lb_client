@@ -2,16 +2,14 @@ package ru.isntrui.lb.client.api
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.put
-import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import ru.isntrui.lb.client.models.User
+import ru.isntrui.lb.client.models.TextI
 
-suspend fun updateUser(client: HttpClient, user: User) {
+suspend fun approveText(client: HttpClient, textI: TextI, a: Boolean) {
     println(client.put {
-        url("user/${user.id}/update")
+        url("text/approve?approve=$a&textId=${textI.id}")
         contentType(ContentType.Application.Json)
-        setBody(user)
     }.status)
 }

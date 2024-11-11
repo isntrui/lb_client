@@ -87,8 +87,26 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "ru.isntrui.lb.client"
+            packageName = "LB Tool"
             packageVersion = "1.0.0"
+            modules(
+                "java.instrument",
+                "java.prefs",
+                "java.sql",
+                "java.desktop",
+                "java.logging",
+                "java.xml",
+                "java.management",
+                "java.naming",
+                "java.security.jgss",
+                "java.security.sasl",
+                "java.smartcardio",
+                "java.rmi"
+            )
+            macOS {
+                bundleID = "ru.isntrui.lb.client"
+                iconFile.set(project.file("src/main/resources/icon.icns"))
+            }
         }
     }
 }

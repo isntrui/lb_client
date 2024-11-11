@@ -28,15 +28,20 @@ import lbtool.composeapp.generated.resources.musicnote
 import lbtool.composeapp.generated.resources.pencil
 import lbtool.composeapp.generated.resources.status
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.api.createWave
 import ru.isntrui.lb.client.api.deleteWave
 import ru.isntrui.lb.client.api.fetchAllDesigns
 import ru.isntrui.lb.client.api.fetchAllSongs
+import ru.isntrui.lb.client.api.fetchAllTexts
 import ru.isntrui.lb.client.api.fetchAllWaves
 import ru.isntrui.lb.client.api.fetchCurrentUser
+import ru.isntrui.lb.client.api.updateUser
+import ru.isntrui.lb.client.api.updateWave
 import ru.isntrui.lb.client.models.Design
 import ru.isntrui.lb.client.models.Song
+import ru.isntrui.lb.client.models.TextI
 import ru.isntrui.lb.client.models.User
 import ru.isntrui.lb.client.models.Wave
 import ru.isntrui.lb.client.models.enums.Role
@@ -58,6 +63,7 @@ fun WavesAdminPanel(navController: NavController) {
     var user by remember { mutableStateOf(User()) }
     var songs by remember { mutableStateOf(emptyList<Song>()) }
     var designs by remember { mutableStateOf(emptyList<Design>()) }
+    var texts by remember { mutableStateOf(emptyList<TextI>()) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         try {
@@ -67,6 +73,7 @@ fun WavesAdminPanel(navController: NavController) {
                 .reversed()
             songs = fetchAllSongs(Net.client())
             designs = fetchAllDesigns(Net.client())
+            texts = fetchAllTexts(Net.client())
         } catch (e: Exception) {
             dialogMessage = e.message ?: "Unknown error"
             dialogOpen = true
@@ -170,7 +177,7 @@ fun WavesAdminPanel(navController: NavController) {
                 }
                 HorizontalDivider(Modifier.padding(16.dp))
                 waves.forEach { wave ->
-                    WaveCard(wave, user, navController, songs, designs)
+                    WaveCard(wave, user, navController, songs, designs, texts)
                 }
             }
         }
@@ -325,10 +332,11 @@ fun CreateWaveDialog(
 
 
 @Composable
-fun WaveCard(wave: Wave, user: User, navController: NavController, songs: List<Song>, designs: List<Design>) {
+fun WaveCard(wavee: Wave, user: User, navController: NavController, songs: List<Song>, designs: List<Design>, texts: List<TextI>) {
     var showDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-
+    var expanded by remember { mutableStateOf(false) }
+    var wave by remember { mutableStateOf(wavee) }
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -360,6 +368,35 @@ fun WaveCard(wave: Wave, user: User, navController: NavController, songs: List<S
                         style = MaterialTheme.typography.bodyMedium,
                         fontSize = 16.sp
                     )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { expanded = true },
+                    ) {
+                        Box {
+                            Text(
+                                text = stringResource(wave.status.res),
+                                modifier = Modifier.padding(16.dp)
+                            )
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                WaveStatus.entries.forEach { status ->
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(status.res)) },
+                                        onClick = {
+                                            wave = wave.copy(status=status)
+                                            coroutineScope.launch {
+                                                updateWave(Net.client(), wave)
+                                            }
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -424,6 +461,24 @@ fun WaveCard(wave: Wave, user: User, navController: NavController, songs: List<S
                     modifier = Modifier.padding(vertical = 6.dp)
                 ) {
                     Icon(
+                        painterResource(Res.drawable.pencil),
+                        contentDescription = "",
+                        tint = Color.Black,
+                        modifier = Modifier.size(28.dp),
+                    )
+                    Text(
+                        text = "${texts.filter { it.wave!!.id == wave.id }.size} текстов",
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            OutlinedCard(Modifier.padding(10.dp)) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 6.dp)
+                ) {
+                    Icon(
                         painterResource(Res.drawable.brush),
                         contentDescription = "",
                         tint = Color.Black,
@@ -466,7 +521,7 @@ fun WaveCard(wave: Wave, user: User, navController: NavController, songs: List<S
                         modifier = Modifier.size(32.dp),
                     )
                     Text(
-                        text = "${wave.status}",
+                        text = stringResource(wave.status.res),
                         modifier = Modifier.padding(horizontal = 10.dp),
                         style = MaterialTheme.typography.bodySmall
                     )

@@ -40,4 +40,7 @@
     <string name="hide_password_text">скрыть</string>
     <string name="password_mismatch_error">пароли должны совпадать</string>
     <string name="network_error_prefix">ошибка сети: </string>
+    <string name="planned_statuses">запланировано</string>
+    <string name="progress_statuses">в процессе</string>
+    <string name="finished_statuses">завершено</string>
 </resources>

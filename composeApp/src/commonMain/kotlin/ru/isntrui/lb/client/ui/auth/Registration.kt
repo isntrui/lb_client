@@ -43,6 +43,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -59,6 +60,17 @@ import org.jetbrains.compose.resources.stringResource
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.models.enums.Role
 import ru.isntrui.lb.client.requests.SignUpRequest
+
+suspend fun isValidInviteCode(client: HttpClient, inviteCode: String): Boolean {
+    return try {
+        val response = client.get("auth/check/invite?code=${inviteCode.lowercase()}")
+        println(response)
+        println(response.bodyAsText())
+        response.bodyAsText() == "true"
+    } catch (e: Exception) {
+        false
+    }
+}
 
 fun isValidName(name: String): Boolean {
     return name.all { it.isLetter() }
@@ -128,7 +140,6 @@ fun Registration(navController: NavController) {
     }
     val focusRequester = remember { FocusRequester() }
     var repeatPass by remember { mutableStateOf("") }
-
 
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically),
@@ -260,14 +271,21 @@ fun Registration(navController: NavController) {
                     DropdownMenu(
                         expanded = isDropDownExpanded,
                         onDismissRequest = { isDropDownExpanded = false }) {
-                        Role.entries.forEachIndexed { index, role ->
-                            DropdownMenuItem(text = { Text(text = stringResource(role.res)) },
-                                onClick = {
-                                    isDropDownExpanded = false
-                                    itemPosition = index
-                                    userState = userState.copy(role = role)
-                                })
+                        Role.entries.filter {
+                            it !in listOf(
+                                Role.COORDINATOR,
+                                Role.HEAD,
+                                Role.ADMIN
+                            )
                         }
+                            .forEachIndexed { index, role ->
+                                DropdownMenuItem(text = { Text(text = stringResource(role.res)) },
+                                    onClick = {
+                                        isDropDownExpanded = false
+                                        itemPosition = index
+                                        userState = userState.copy(role = role)
+                                    })
+                            }
                     }
                 }
             }
@@ -283,6 +301,12 @@ fun Registration(navController: NavController) {
                 isError = !cond.isInviteCodeCorrect,
                 onValueChange = {
                     userState = userState.copy(inviteCode = it.lowercase())
+                    scope.launch {
+                        cond.isInviteCodeCorrect = isValidInviteCode(Net.client(), it)
+                    }
+                },
+                supportingText = {
+                    if (!cond.isInviteCodeCorrect) Text("неверный код")
                 }
             )
         }
@@ -310,7 +334,9 @@ fun Registration(navController: NavController) {
                     userState = userState.copy(username = it.lowercase())
                     scope.launch {
                         cond.isUsernameTaken = false
-                        if (Net.client().get("auth/check/username?username=" + userState.username).bodyAsText() == "true") {
+                        if (Net.client().get("auth/check/username?username=" + userState.username)
+                                .bodyAsText() == "true"
+                        ) {
                             cond.isUsernameTaken = true
                         }
                     }
@@ -330,7 +356,10 @@ fun Registration(navController: NavController) {
                     if (cond.isEmailCorrect) {
                         scope.launch {
                             cond.isEmailTaken = false
-                            if (Net.client().get("auth/check/email?email=" + userState.email.lowercase()).bodyAsText() == "true") {
+                            if (Net.client()
+                                    .get("auth/check/email?email=" + userState.email.lowercase())
+                                    .bodyAsText() == "true"
+                            ) {
                                 cond.isEmailTaken = true
                             }
                         }
@@ -394,13 +423,19 @@ fun Registration(navController: NavController) {
             onClick = {
                 scope.launch {
                     try {
-                        if (Net.client().get("auth/check/username?username=" + userState.username).bodyAsText() == "true") {
+                        cond.isInviteCodeCorrect =
+                            isValidInviteCode(Net.client(), userState.inviteCode)
+                        if (Net.client().get("auth/check/username?username=" + userState.username)
+                                .bodyAsText() == "true"
+                        ) {
                             cond.isUsernameTaken = true
                         }
-                        if (Net.client().get("auth/check/email?email=" + userState.email).bodyAsText() == "true") {
+                        if (Net.client().get("auth/check/email?email=" + userState.email)
+                                .bodyAsText() == "true"
+                        ) {
                             cond.isEmailTaken = true
                         }
-                        if (!cond.isUsernameTaken && !cond.isEmailTaken) {
+                        if (!cond.isUsernameTaken && !cond.isEmailTaken && cond.isInviteCodeCorrect) {
                             val response: HttpResponse =
                                 Net.client().post("auth/sign-up") {
                                     setBody(userState)
@@ -428,7 +463,8 @@ fun Registration(navController: NavController) {
                     isValidName(userState.building) &&
                     isPasswordValid(userState.password) &&
                     isValidEmail(userState.email) &&
-                    userState.role != null
+                    userState.role != null &&
+                    cond.isInviteCodeCorrect
         ) {
             Text(stringResource(Res.string.submit_button_text))
         }
@@ -450,7 +486,11 @@ fun Registration(navController: NavController) {
             )
         }
         if (inviteErrRes != null) {
-            Text(stringResource(inviteErrRes!!), color = Color.Red, style = MaterialTheme.typography.headlineMedium)
+            Text(
+                stringResource(inviteErrRes!!),
+                color = Color.Red,
+                style = MaterialTheme.typography.headlineMedium
+            )
         }
     }
 }

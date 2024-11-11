@@ -1,17 +1,18 @@
 package ru.isntrui.lb.client.api
 
 import io.ktor.client.HttpClient
-import io.ktor.client.request.put
+import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import ru.isntrui.lb.client.models.User
+import ru.isntrui.lb.client.models.TextI
 
-suspend fun updateUser(client: HttpClient, user: User) {
-    println(client.put {
-        url("user/${user.id}/update")
+suspend fun createText(client: HttpClient, text: TextI) {
+    println(text)
+    println(client.post {
+        url("text/save")
         contentType(ContentType.Application.Json)
-        setBody(user)
+        setBody(text)
     }.status)
 }
