@@ -8,6 +8,7 @@ actual object NetworkUtils {
             val address = InetAddress.getByName("google.com")
             !address.equals("")
         } catch (e: Exception) {
+            e.printStackTrace()
             false
         }
     }
