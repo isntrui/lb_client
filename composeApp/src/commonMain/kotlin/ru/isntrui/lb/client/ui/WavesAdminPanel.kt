@@ -37,7 +37,6 @@ import ru.isntrui.lb.client.api.fetchAllSongs
 import ru.isntrui.lb.client.api.fetchAllTexts
 import ru.isntrui.lb.client.api.fetchAllWaves
 import ru.isntrui.lb.client.api.fetchCurrentUser
-import ru.isntrui.lb.client.api.updateUser
 import ru.isntrui.lb.client.api.updateWave
 import ru.isntrui.lb.client.models.Design
 import ru.isntrui.lb.client.models.Song
@@ -284,7 +283,6 @@ fun CreateWaveDialog(
                         wave = wave.copy(startsOn = date)
                         dateError = !validateDates(wave.startsOn, wave.endsOn)
                         overlapError = checkOverlap(wave.startsOn, wave.endsOn)
-                        println(wave)
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -317,7 +315,10 @@ fun CreateWaveDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (validateTitle(wave.title) && validateDates(wave.startsOn, wave.endsOn) && !overlapError) {
+                    titleError = !validateTitle(wave.title)
+                    dateError = !validateDates(wave.startsOn, wave.endsOn)
+                    overlapError = checkOverlap(wave.startsOn, wave.endsOn)
+                    if (!titleError && !dateError && !overlapError) {
                         onSave(wave)
                         onDismiss()
                     }
@@ -329,7 +330,6 @@ fun CreateWaveDialog(
         }
     )
 }
-
 
 @Composable
 fun WaveCard(wavee: Wave, user: User, navController: NavController, songs: List<Song>, designs: List<Design>, texts: List<TextI>) {

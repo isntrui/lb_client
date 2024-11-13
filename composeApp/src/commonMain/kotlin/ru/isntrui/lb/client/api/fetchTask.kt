@@ -4,6 +4,8 @@ import io.ktor.client.*
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import ru.isntrui.lb.client.models.task.Task
@@ -14,7 +16,9 @@ private val json = Json {
 
 suspend fun fetchTasks(client: HttpClient): List<Task> {
     return try {
-        val response: HttpResponse = client.get("task/my")
+        val response: HttpResponse = client.get("task/my") {
+            contentType(ContentType.Application.Json)
+        }
 
         if (response.status.value == 200) {
             val responseBody = response.bodyAsText()

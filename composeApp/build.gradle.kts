@@ -6,14 +6,21 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    id("kotlinx-serialization")
+    alias(libs.plugins.kotlinxSerialization)
 }
 
 kotlin {
-    jvm("desktop")
+    kotlin {
+        jvm("desktop") {
+            compilations.all {
+                kotlinOptions {
+                    jvmTarget = "18"
+                }
+            }
+        }
+    }
 
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
+    @OptIn(ExperimentalWasmDsl::class) wasmJs {
         moduleName = "composeApp"
         browser {
             val rootDirPath = project.rootDir.path
@@ -49,20 +56,18 @@ kotlin {
             implementation(compose.material3AdaptiveNavigationSuite)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha08")
-            implementation("io.ktor:ktor-client-logging:3.0.1")
-            implementation("io.ktor:ktor-client-core:3.0.1")
-            implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
-            implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
             implementation("io.ktor:ktor-client-json:3.0.1")
             implementation("io.ktor:ktor-client-serialization:3.0.1")
             implementation("io.ktor:ktor-client-auth:3.0.1")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
             implementation("com.russhwolf:multiplatform-settings-no-arg:1.2.0")
             implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc02")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.0.0-rc02")
             implementation("io.github.vinceglb:filekit-core:0.8.7")
-            implementation("io.github.vinceglb:filekit-compose:0.8.7")
+            implementation("io.ktor:ktor-client-core:3.0.1")
+            implementation("io.ktor:ktor-client-logging:3.0.1")
+            implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
         }
 
 
@@ -84,28 +89,25 @@ kotlin {
 compose.desktop {
     application {
         mainClass = "ru.isntrui.lb.client.MainKt"
-
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(
+                TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb
+            )
             packageName = "LB Tool"
             packageVersion = "1.0.0"
-            modules(
-                "java.instrument",
-                "java.prefs",
-                "java.sql",
-                "java.desktop",
-                "java.logging",
-                "java.xml",
-                "java.management",
-                "java.naming",
-                "java.security.jgss",
-                "java.security.sasl",
-                "java.smartcardio",
-                "java.rmi"
-            )
+            includeAllModules = true
             macOS {
-                bundleID = "ru.isntrui.lb.client"
-                iconFile.set(project.file("src/main/resources/icon.icns"))
+                bundleID =
+                    "ru.isntrui.lb.client"
+                iconFile.set(project.file("src/commonMain/composeResources/drawable/lbtool.icns"))
+                copyright = "isntrui / Artem Akopian © 2024"
+            }
+            windows {
+                menuGroup =
+                    "LB Tool"
+                shortcut = true
+                perUserInstall = true
+                iconFile.set(project.file("src/commonMain/composeResources/drawable/lbtoolwin.ico"))
             }
         }
     }

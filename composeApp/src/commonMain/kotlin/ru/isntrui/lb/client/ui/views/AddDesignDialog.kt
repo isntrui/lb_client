@@ -6,9 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.core.PickerMode
-import io.github.vinceglb.filekit.core.PickerType
 import io.github.vinceglb.filekit.core.PlatformFile
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -19,6 +17,7 @@ import ru.isntrui.lb.client.models.User
 
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.unit.sp
+import io.github.vinceglb.filekit.core.FileKit
 import io.github.vinceglb.filekit.core.extension
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.launch
@@ -48,16 +47,12 @@ fun AddDesignDialog(
         waves = fetchAllActualWaves(Net.client())
         currentUser = fetchCurrentUser(Net.client())
     }
-    val launcher = rememberFilePickerLauncher(
-        type = PickerType.File(
-            extensions = listOf("psd", "png", "jpg", "jpeg", "svg", "gif", "webp", "bmp", "tiff", "ico", "heif", "heic", "pdf", "pptx", "key", "fig"),
-        ),
-        mode = PickerMode.Single,
-        title = "Выбери песенку",
-    ) { file ->
+    var file by remember { mutableStateOf<PlatformFile?>(null) }
+    if (file != null) {
         songName = file!!.name
         selectedFile = file
     }
+
     val isFormValid =
         title.isNotBlank() && selectedFile != null && selectedWave != null
     AlertDialog(
@@ -76,7 +71,12 @@ fun AddDesignDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(onClick = {
-                    launcher.launch()
+                    coroutineScope.launch {
+                        file = FileKit.pickFile(
+                            mode = PickerMode.Single,
+                            title = "Выбери аватарку",
+                        )
+                    }
                 }) {
                     Text(songName)
                 }

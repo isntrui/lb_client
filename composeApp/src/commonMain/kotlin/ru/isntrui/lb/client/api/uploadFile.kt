@@ -16,6 +16,7 @@ suspend fun uploadFile(client: HttpClient, fileName: String, fileBytes: ByteArra
             })
         }
     ) {
+        contentType(ContentType.Application.Any)
         method = HttpMethod.Post
         timeout {
             requestTimeoutMillis = 300_000

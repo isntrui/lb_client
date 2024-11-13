@@ -49,6 +49,7 @@ import org.jetbrains.compose.resources.stringResource
 import retrieveToken
 import ru.isntrui.lb.client.Net
 import ru.isntrui.lb.client.api.fetchCurrentUserResp
+import ru.isntrui.lb.client.getPlatform
 import ru.isntrui.lb.client.requests.LoginRequest
 import ru.isntrui.lb.client.responses.LoginResponse
 import ru.isntrui.lb.client.storage.TokenStorage
@@ -131,6 +132,7 @@ fun Login(navController: NavController, exited: Boolean = false) {
                 fontFamily = MaterialTheme.typography.headlineLarge.fontFamily,
                 fontSize = 120.sp
             )
+            Text(getPlatform().name, fontSize = 20.sp)
             Spacer(Modifier.height(30.dp))
 
             OutlinedTextField(
@@ -228,7 +230,7 @@ fun Login(navController: NavController, exited: Boolean = false) {
 
                         responseCode = response.status
                     } catch (e: Throwable) {
-                        responseMessage = "Ошибка сети: ${e.message}"
+                        responseMessage = "Ошибка сети: $e\n${e.cause}"
                     }
                 }
             }, enabled = loginState.isUsernameValid() && loginState.isPasswordValid()) {

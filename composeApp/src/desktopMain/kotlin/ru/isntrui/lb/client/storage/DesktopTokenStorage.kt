@@ -9,10 +9,10 @@ import javax.crypto.spec.SecretKeySpec
 import kotlin.random.Random
 
 actual object TokenStorage {
-    private const val TOKEN_FILE_PATH = "token.enc"
+    private var TOKEN_FILE_PATH = "${System.getProperty("user.home")}/token.enc"
+    private var KEY_FILE_PATH = "${System.getProperty("user.home")}/.key"
     private const val ALGORITHM = "AES"
     private const val TRANSFORMATION = "AES/CBC/PKCS5Padding"
-    private const val KEY_FILE_PATH = ".key"
 
     private fun generateSecretKey(): SecretKey {
         val keyGen = KeyGenerator.getInstance(ALGORITHM)

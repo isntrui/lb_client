@@ -27,9 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.core.FileKit
 import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
+import io.github.vinceglb.filekit.core.PlatformFile
 import io.github.vinceglb.filekit.core.extension
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CoroutineScope
@@ -86,7 +87,6 @@ fun Dashboard(navController: NavController) {
     var loading by remember { mutableStateOf(true) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var exception by remember { mutableStateOf<Exception?>(null) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         try {
@@ -312,25 +312,20 @@ fun UserCard(user: User, navController: NavController, onAvatarChange: () -> Uni
     var isHovered by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val launcher = rememberFilePickerLauncher(
-        type = PickerType.Image,
-        mode = PickerMode.Single,
-        title = "выбери аву"
-    ) { file ->
-        if (file != null) {
-            isLoading = true
-            scope.launch {
-                val re = uploadFile(
-                    Net.client(),
-                    user.id.toString() + "." + file.extension,
-                    file.readBytes(),
-                    FileType.IMG
-                )
-                val newUser = user.copy(avatarUrl = re.bodyAsText())
-                updateUser(Net.client(), newUser)
-                isLoading = false
-                onAvatarChange()
-            }
+    var file by remember { mutableStateOf<PlatformFile?>(null) }
+    if (file != null) {
+        isLoading = true
+        scope.launch {
+            val re = uploadFile(
+                Net.client(),
+                user.id.toString() + "." + file!!.extension,
+                file!!.readBytes(),
+                FileType.IMG
+            )
+            val newUser = user.copy(avatarUrl = re.bodyAsText())
+            updateUser(Net.client(), newUser)
+            isLoading = false
+            onAvatarChange()
         }
     }
     var isOpened by remember {
@@ -361,7 +356,15 @@ fun UserCard(user: User, navController: NavController, onAvatarChange: () -> Uni
                                 }
                             )
                         }
-                        .clickable { launcher.launch() }
+                        .clickable {
+                            scope.launch {
+                                file = FileKit.pickFile(
+                                    type = PickerType.Image,
+                                    mode = PickerMode.Single,
+                                    title = "Выбери аватарку",
+                                )
+                            }
+                        }
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
