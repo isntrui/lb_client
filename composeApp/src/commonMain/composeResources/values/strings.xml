@@ -23,7 +23,7 @@
     <string name="invitenotfound">приглашение не найдено</string>
     <string name="emaildoesntmatchinvite">email не совпадает с приглашением</string>
     <string name="emailtaken">email уже зарегистрирован</string>
-    <string name="year">год</string>
+    <string name="year">год выпуска</string>
     <string name="chooserole">выбрать роль</string>
     <string name="SOUNDDESIGNER">саунд</string>
     <string name="registration_title">регистрация</string>

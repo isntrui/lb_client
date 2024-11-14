@@ -73,11 +73,13 @@ import lbtool.composeapp.generated.resources.email
 import lbtool.composeapp.generated.resources.emailtaken
 import lbtool.composeapp.generated.resources.entercorrect
 import lbtool.composeapp.generated.resources.pencil
+import ru.isntrui.lb.client.Platform
 import ru.isntrui.lb.client.api.createInvite
 import ru.isntrui.lb.client.api.deleteUser
 import ru.isntrui.lb.client.api.fetchAllInvites
 import ru.isntrui.lb.client.api.isUserExists
 import ru.isntrui.lb.client.api.updateUser
+import ru.isntrui.lb.client.getPlatform
 import ru.isntrui.lb.client.models.Invite
 import ru.isntrui.lb.client.ui.auth.isValidEmail
 import kotlin.math.abs
@@ -184,8 +186,21 @@ fun EditUserDialog(
                             onDismissRequest = { expanded = false }
                         ) {
                             val availableRoles = when (userInit.role) {
-                                Role.HEAD -> Role.entries.filter { it !in listOf(Role.ADMIN, Role.HEAD) }
-                                Role.COORDINATOR -> Role.entries.filter { it !in listOf(Role.ADMIN, Role.HEAD, Role.COORDINATOR) }
+                                Role.HEAD -> Role.entries.filter {
+                                    it !in listOf(
+                                        Role.ADMIN,
+                                        Role.HEAD
+                                    )
+                                }
+
+                                Role.COORDINATOR -> Role.entries.filter {
+                                    it !in listOf(
+                                        Role.ADMIN,
+                                        Role.HEAD,
+                                        Role.COORDINATOR
+                                    )
+                                }
+
                                 Role.ADMIN -> Role.entries
                                 else -> emptyList()
                             }
@@ -294,17 +309,18 @@ fun UsersAdminPanel(navController: NavController) {
                     }
                 }
                 if (user.role in listOf(
-                    Role.COORDINATOR,
-                    Role.HEAD,
-                    Role.ADMIN,
-                    Role.DESIGNER
-                ))
-                IconButton(onClick = { navController.navigate("designs") }) {
-                    Icon(
-                        painterResource(Res.drawable.brush),
-                        contentDescription = "Дизайны",
+                        Role.COORDINATOR,
+                        Role.HEAD,
+                        Role.ADMIN,
+                        Role.DESIGNER
                     )
-                }
+                )
+                    IconButton(onClick = { navController.navigate("designs") }) {
+                        Icon(
+                            painterResource(Res.drawable.brush),
+                            contentDescription = "Дизайны",
+                        )
+                    }
                 if (user.role in listOf(
                         Role.COORDINATOR,
                         Role.HEAD,
@@ -455,13 +471,15 @@ fun CreateInviteDialog(onDismiss: () -> Unit) {
                             "Код приглашения для ${email}: $code",
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        IconButton(onClick = {
-                            clipboardManager.setText(AnnotatedString("Код приглашения для ${email}: $code"))
-                        }) {
-                            Icon(
-                                painterResource(Res.drawable.copy),
-                                contentDescription = "копировать"
-                            )
+                        if (getPlatform().name != "Web") {
+                            IconButton(onClick = {
+                                clipboardManager.setText(AnnotatedString("Код приглашения для ${email}: $code"))
+                            }) {
+                                Icon(
+                                    painterResource(Res.drawable.copy),
+                                    contentDescription = "копировать"
+                                )
+                            }
                         }
                     }
                     Text("сохрани его, потом достать его не получится!")
@@ -470,13 +488,15 @@ fun CreateInviteDialog(onDismiss: () -> Unit) {
         },
         confirmButton = {
             if (!isCreated)
-                Button({
-                    scope.launch {
-                        isCreated = true
-                        createInvite(Net.client(), Invite(code, email))
-                    }
-                },
-                    enabled = email.isNotEmpty() && code.isNotEmpty() && isEmailCorrect && !isEmailTaken && !hasInvite) {
+                Button(
+                    {
+                        scope.launch {
+                            isCreated = true
+                            createInvite(Net.client(), Invite(code, email))
+                        }
+                    },
+                    enabled = email.isNotEmpty() && code.isNotEmpty() && isEmailCorrect && !isEmailTaken && !hasInvite
+                ) {
                     Text("создать")
                 }
             else {
