@@ -23,11 +23,16 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import io.github.vinceglb.filekit.core.FileKit
+import io.ktor.client.request.get
+import io.ktor.client.statement.readRawBytes
+import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.launch
 import lbtool.composeapp.generated.resources.Res
 import lbtool.composeapp.generated.resources.brush
 import lbtool.composeapp.generated.resources.copy
 import lbtool.composeapp.generated.resources.defaultAvatar
+import lbtool.composeapp.generated.resources.download
 import lbtool.composeapp.generated.resources.musicnote
 import lbtool.composeapp.generated.resources.pencil
 import org.jetbrains.compose.resources.painterResource
@@ -38,6 +43,8 @@ import ru.isntrui.lb.client.api.deleteText
 import ru.isntrui.lb.client.api.fetchAllActualWaves
 import ru.isntrui.lb.client.api.fetchAllTexts
 import ru.isntrui.lb.client.api.fetchCurrentUser
+import ru.isntrui.lb.client.getPlatform
+import ru.isntrui.lb.client.models.Song
 import ru.isntrui.lb.client.models.TextI
 import ru.isntrui.lb.client.models.User
 import ru.isntrui.lb.client.models.Wave
@@ -359,12 +366,26 @@ fun TextCard(text: TextI, user: User, navController: NavController) {
                                 ) else CircularProgressIndicator()
                         }
                     }
+                    if (getPlatform().name != "Web") {
+                        IconButton({
+                            clipboardManager.setText(AnnotatedString(text.body))
+                        }) {
+                            Image(
+                                painterResource(Res.drawable.copy),
+                                contentDescription = "Copy",
+                                modifier = Modifier.size(24.dp),
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
+                            )
+                        }
+                    }
                     IconButton({
-                        clipboardManager.setText(AnnotatedString(text.body))
+                        coroutineScope.launch {
+                            download(text)
+                        }
                     }) {
                         Image(
-                            painterResource(Res.drawable.copy),
-                            contentDescription = "Copy",
+                            painterResource(Res.drawable.download),
+                            contentDescription = "Download",
                             modifier = Modifier.size(24.dp),
                             colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                         )
@@ -488,4 +509,12 @@ fun TextCard(text: TextI, user: User, navController: NavController) {
             }
         }
     }
+}
+
+suspend fun download(text: TextI) {
+    FileKit.saveFile(
+        baseName = "T_${text.title}_${text.madeBy.id}_${text.madeOn.dayOfMonth}_${text.madeOn.monthNumber}_${text.madeOn.year}",
+        extension = "txt",
+        bytes = text.body.toByteArray()
+    )
 }
