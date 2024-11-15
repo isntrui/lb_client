@@ -101,25 +101,31 @@ fun TextSection(navController: NavController) {
                     )
                 }
                 Spacer(modifier = Modifier.weight(0.5f))
-                IconButton(onClick = { navController.navigate("songs") }) {
-                    Icon(
-                        painterResource(Res.drawable.musicnote),
-                        contentDescription = "Звонки",
-                        tint = Color.Black
-                    )
+                if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN, Role.SOUNDDESIGNER)) {
+                    IconButton(onClick = { navController.navigate("songs") }) {
+                        Icon(
+                            painterResource(Res.drawable.musicnote),
+                            contentDescription = "Звонки",
+                            tint = Color.Black
+                        )
+                    }
                 }
-                IconButton(onClick = { navController.navigate("designs") }) {
-                    Icon(
-                        painterResource(Res.drawable.brush),
-                        contentDescription = "Дизайны",
-                    )
+                if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN, Role.DESIGNER)) {
+                    IconButton(onClick = { navController.navigate("designs") }) {
+                        Icon(
+                            painterResource(Res.drawable.brush),
+                            contentDescription = "Дизайны",
+                        )
+                    }
                 }
-                IconButton(onClick = { }, enabled = false) {
-                    Icon(
-                        painterResource(Res.drawable.pencil),
-                        contentDescription = "Тексты",
-                        tint = Color.Gray
-                    )
+                if (user.role in listOf(Role.COORDINATOR, Role.HEAD, Role.ADMIN, Role.WRITER)) {
+                    IconButton(onClick = { }, enabled = false) {
+                        Icon(
+                            painterResource(Res.drawable.pencil),
+                            contentDescription = "Тексты",
+                            tint = Color.Gray
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.weight(0.5f))
                 IconButton(onClick = {

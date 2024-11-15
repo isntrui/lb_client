@@ -74,7 +74,7 @@ fun AddDesignDialog(
                     coroutineScope.launch {
                         file = FileKit.pickFile(
                             mode = PickerMode.Single,
-                            title = "Выбери аватарку",
+                            title = "Выбери креатив",
                         )
                     }
                 }) {

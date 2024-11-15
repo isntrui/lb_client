@@ -88,9 +88,8 @@ fun AddSongDialog(
                 OutlinedButton(onClick = {
                     coroutineScope.launch {
                         file = FileKit.pickFile(
-                            type = PickerType.Image,
                             mode = PickerMode.Single,
-                            title = "Выбери аватарку",
+                            title = "Выбери звонок",
                         )
                     }
                 }) {

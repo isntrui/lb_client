@@ -50,11 +50,13 @@ import ru.isntrui.lb.client.models.enums.Role
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -64,10 +66,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import io.github.vinceglb.filekit.core.FileKit
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import lbtool.composeapp.generated.resources.copy
 import lbtool.composeapp.generated.resources.email
 import lbtool.composeapp.generated.resources.emailtaken
@@ -350,7 +357,10 @@ fun UsersAdminPanel(navController: NavController) {
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-
+            var listToSave = ""
+            users.forEach {
+                listToSave += "${it.firstName} ${it.lastName} | ${stringResource(it.role.res)} | ${it.building} | ${it.email}\n"
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -364,6 +374,24 @@ fun UsersAdminPanel(navController: NavController) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Spacer(Modifier.weight(1f))
+                    CenteredExtendedFloatingActionButton({
+                        scope.launch {
+                            FileKit.saveFile(
+                                baseName = "исполнители_${
+                                    Clock.System.now().toLocalDateTime(
+                                        TimeZone.currentSystemDefault()
+                                    ).date
+                                }",
+                                extension = "txt",
+                                bytes = listToSave.toByteArray()
+                            )
+                        }
+                    }, {
+                        Icon(
+                            Icons.Outlined.Share, "share"
+                        )
+                    })
+                    Spacer(Modifier.width(16.dp))
                     UserCard(user, navController) {
                         isLoading = true
                         navController.navigate("users")

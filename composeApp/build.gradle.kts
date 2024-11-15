@@ -29,7 +29,6 @@ kotlin {
                 outputFileName = "composeApp.js"
                 devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
                     static = (static ?: mutableListOf()).apply {
-                        // Serve sources to debug inside browser
                         add(rootDirPath)
                         add(projectDirPath)
                     }
